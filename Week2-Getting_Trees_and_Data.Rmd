@@ -9,20 +9,20 @@ Let's get some trees from Open Tree of Life. This is in some ways a successor to
 
 Now let's get ya tree, replacing the `eval=FALSE` with `eval=TRUE` and replacing the missing info.
 
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 
 GetTreeFromOpenTree <- function() {
 	library(rotl)
 	library(ape)
 
- formica.id <- rotl::tnrs_match_names("__________")$ott_id
+ formica.id <- rotl::tnrs_match_names("Formica")$ott_id
 
 	# Now get Open Tree's current best estimate of the phylogeny for the group
 	# They call this the tree of life; we can get the subtree for just this group.
 	formica.tree <- rotl::tol_subtree(ott_id=formica.id)
 
 	# Let's plot the tree:
-	ape::plot.phylo("__________", type="fan", cex=0.2)
+	ape::plot.phylo(formica.tree, type="fan", cex=0.2)
 }
 ```
 
@@ -30,9 +30,9 @@ It has a lot of polytomies, representing uncertainty. A maximally resolved tree 
 
 ```{r, eval=FALSE}
 	print(paste("The formica tree has ", ape::Ntip(formica.tree), " terminals and ",
-	Nnode(formica.tree), " internal nodes out of ",ape::Ntip(formica.tree)-2,
+	Nnode(formica.tree), " internal nodes out of ", ape::Ntip(formica.tree)-2,
 	" possible, which means it is ",
-	round(100*(ape::Nnode(formica.tree)-1)/(ape::Ntip(formica.tree)-3), 2),
+	round(100*(ape::Nnode(formica.tree)-1) / (ape::Ntip(formica.tree)-3), 2),
 	"% resolved", sep=""))
 
 	# Open Tree can also return the original studies with the source trees.
@@ -48,7 +48,14 @@ It has a lot of polytomies, representing uncertainty. A maximally resolved tree 
 
 	# And plot it
 	ape::plot.phylo(formica.study1.tree1, type="fan", cex=0.2)
-}
+	
+	# State the information about the tree from study 1
+	print(paste("The formica tree from Study 1 has ", ape::Ntip(formica.study1.tree1), " terminals and ",
+	Nnode(formica.study1.tree1), " internal nodes out of ", ape::Ntip(formica.study1.tree1)-2,
+	" possible, which means it is ",
+	round(100*(ape::Nnode(formica.study1.tree1)-1) / (ape::Ntip(formica.study1.tree1)-3), 2),
+	"% resolved", sep=""))
+
 ```
 
 Another question is where to get data. One important way is to collect your own: go out and measure seed size, count insect hairs, measure polar bear weight, etc. However, another way is to gather data already published by others. As with trees, it is important to *cite your sources*. People have put a lot of work into gathering data, and citation is the main way they get credit. It is also an essential way to reward people who choose to share data for others to build upon, correct, and check for reproducibility (some researchers still choose not to share data). Having citations also lets you and future scientists check for problems.
