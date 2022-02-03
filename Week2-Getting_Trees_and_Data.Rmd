@@ -24,6 +24,10 @@ GetTreeFromOpenTree <- function() {
 	# Let's plot the tree:
 	ape::plot.phylo(formica.tree, type="fan", cex=0.2)
 }
+
+GetTreeFromOpenTree()
+# formica.tree needs to be in "phylo" format for the next section of code to work, so re-make formica.tree before plotting.
+formica.tree <- tol_subtree(ott_id = (tnrs_match_names("Formica")$ott_id))
 ```
 
 It has a lot of polytomies, representing uncertainty. A maximally resolved tree (if rooted) will have one fewer internal nodes than terminal nodes: think of a tree with three taxa, ((A,B),C): it will have the MRCA of A and B and the MRCA of A, B, and C: three terminals, two internal nodes. If it had no information, it would only have one node. So we can look at the ratio of number of internal nodes to number of possible internal nodes to figure out how resolved a tree is (subtracting 1 from each to account for the root node that must always exist)
@@ -69,3 +73,23 @@ For homework, consider what biological question you're curious about and gather 
 	# Load the data in
 	# Plot the data, summarize the data, etc. to make sure there are no weird values.
 ```
+
+Function where I can specify which taxa as a variable in the function.
+```{r, eval=TRUE}
+PullFromOpenTree <- function(taxa) {
+	library(rotl)
+	library(ape)
+
+ taxa.id <- rotl::tnrs_match_names((taxa))$ott_id
+
+	# Now get Open Tree's current best estimate of the phylogeny for the group
+	# They call this the tree of life; we can get the subtree for just this group.
+	taxa.tree <- rotl::tol_subtree(ott_id=taxa.id)
+
+	# Let's plot the tree:
+	ape::plot.phylo(taxa.tree, type="fan", cex=0.2)
+}
+
+PullFromOpenTree(taxa = "Navarretia")
+```
+
