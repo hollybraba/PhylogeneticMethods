@@ -1,0 +1,87 @@
+---
+title: "Discrete Characters"
+date: "3/9/2022"
+output: html_document
+---
+
+Following along with the Discrete Characters exercise by Dr. O'Meara: http://phylometh.info/discrete.html
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(rotl)
+library(ape)
+library(RCurl)
+library(geiger)
+library(dispRity)
+library(tidyverse)
+library(Hmisc)
+library(phangorn)
+```
+
+Borrowed data from https://lukejharmon.github.io/pcm/rmarkdown/chapter8_squamatelimbs.html
+```{r, eval=TRUE}
+tree <- read.tree(text=getURL("https://raw.githubusercontent.com/lukejharmon/pcm/master/datafiles/squamate.phy"))
+plot.phylo(tree)
+```
+
+Character data
+```{r, eval=TRUE}
+discrete.data <- read.csv(text=getURL("https://raw.githubusercontent.com/lukejharmon/pcm/master/datafiles/brandley_table.csv"))
+
+rownames(discrete.data) <- gsub(" ", "_", discrete.data$Species)
+
+subset.discrete.data <- discrete.data[, c("Species", "Morph")]
+
+```
+
+Clean the data. Needed to remove 3 taxa after running the function.
+```{r, eval=TRUE}
+CleanData <- function(phy, data) {
+  treedata(tree, 
+           subset.discrete.data, 
+           sort = FALSE, 
+           warnings = TRUE)
+}
+CleanData(tree, subset.discrete.data)
+cleaned.data <- subset.discrete.data[!(subset.discrete.data$Species == "Gonatodes_albogularis" |
+                                       subset.discrete.data$Species == "Lepidophyma_flavimaculatum" |
+                                       subset.discrete.data$Species == "Trachyboa_boulengeri"),]
+cleaned.data <- cleaned.data %>%
+  mutate_at(vars(Morph), .funs = as.factor) %>%
+  select(-Species)
+```
+
+Visualize the discrete data
+It's a bit messy looking, but it does show histograms of the data. If you knew what the data was supposed to look like, it might make sense. 
+```{r, eval=TRUE}
+par(mar=c(1,1,1,1))
+VisualizeData <- function(phy, data) {
+  hist.data.frame(cleaned.data)
+}
+VisualizeData(tree, cleaned.data)
+```
+
+Visualize the tree. Doesn't seem like a lot of problems with polytomies. 
+```{r, eval=TRUE}
+plot.phylo(tree)
+```
+
+Look at ancestral states with parsimony:
+```{r, eval=TRUE}
+a <- c("0", "1", "2", "NA")
+cleaned.discrete.phyDat <- phyDat(cleaned.data, type = "USER", levels = levels(as.factor(a)))
+# kept all the levels for Toes, Fingers, Morph, and Ecology.1
+
+anc.p <- ancestral.pars(tree, cleaned.discrete.phyDat)
+plotAnc(tree, data = anc.p, i = 1)
+# Error in data[[i]][rows, ] : subscript out of bounds
+```
+
+
+
+
+
+
+
+
+
+
