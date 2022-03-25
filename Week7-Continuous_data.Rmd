@@ -1,0 +1,163 @@
+---
+title: "Continuous character models"
+output:
+  html_document:
+    df_print: paged
+---
+
+Following along with http://phylometh.info/continuous.html
+```{r, eval = TRUE}
+library(ape) # utility functions
+library(geiger) # utility functions
+library(OUwie)
+library(phytools)
+library(tidyverse)
+library(RCurl)
+```
+
+Get the tree and data
+```{r, eval = TRUE, echo = TRUE}
+sq_tree <- read.tree(text=getURL("https://raw.githubusercontent.com/lukejharmon/pcm/master/datafiles/squamate.phy"))
+
+continuous.data <- read.csv(text=getURL("https://raw.githubusercontent.com/lukejharmon/pcm/master/datafiles/brandley_table.csv"), stringsAsFactors = FALSE)
+
+rownames(continuous.data) <- gsub(" ", "_", continuous.data$Species)
+hist(continuous.data$SVL)
+# The data is right skewed and bounded by 0, I will log-transform it.
+```
+
+Clean the data to make sure everything matches
+```{r, eval = TRUE}
+CleanData <- function(phy, data) {
+  treedata(phy, 
+           continuous.data, 
+           sort = FALSE, 
+           warnings = TRUE)
+}
+
+CleanData(sq_tree, continuous.data)
+
+continuous.data <- continuous.data[!(continuous.data$Species == "Gonatodes albogularis" |
+                                      continuous.data$Species == "Lepidophyma flavimaculatum" |
+                                      continuous.data$Species == "Trachyboa boulengeri"),]
+
+CleanData(sq_tree, continuous.data)
+
+# to tidy up the data I picked only one continuous column. Snout-vent length (SVL) in mm.
+# the data need to be in a vector, too. Not a dataframe. Log transform it to make it more normal.
+df.subset.continuous.data <- log(continuous.data["SVL"])
+subset.continuous.data <- df.subset.continuous.data[,1]
+names(subset.continuous.data) <- rownames(df.subset.continuous.data)
+hist(subset.continuous.data)
+
+print(ape::Ntip(sq_tree))
+print(length(subset.continuous.data))
+```
+
+Visualize the data
+```{r, eval = TRUE}
+VisualizeData <- function(phy, data) {
+  contMap(tree = phy,
+          x = data)
+}
+VisualizeData(sq_tree, subset.continuous.data)
+```
+
+
+```{r, eval = TRUE}
+plot.phylo(sq_tree)
+```
+
+Rate of evolution
+```{r, eval = TRUE}
+BM1 <- geiger::fitContinuous(sq_tree, subset.continuous.data, model = "BM")
+
+print(paste("The rate of evolution is", BM1$opt$sigsq, "in units of", "log(mm^2) / time"))
+```
+
+Changing alpha changes how much stretch there is. How to determine alpha?
+```{r, eval = TRUE}
+OU1 <- fitContinuous(sq_tree, subset.continuous.data, model = "OU")
+par(mfcol = c(1,2))
+plot(sq_tree, show.tip.label = FALSE)
+ou.tree <- rescale(sq_tree, model = "OU", .01)
+plot(ou.tree, show.tip.label = FALSE)
+```
+
+The tree with the alpha transformation had longer tip lengths and shorter internal branches. 
+Now compare the two models
+```{r, eval = TRUE}
+AIC.BM1 <- print(BM1$opt$aic)
+AIC.OU1 <- print(OU1$opt$aic)
+delta.AIC.BM1 <- if(AIC.BM1 < AIC.OU1) {
+  (AIC.BM1 - AIC.BM1)
+} else {
+  (AIC.BM1 - AIC.OU1)
+}
+delta.AIC.OU1 <- if(AIC.OU1 < AIC.BM1) {
+  (AIC.OU1 - AIC.OU1)
+} else {
+  (AIC.OU1 - AIC.BM1)
+}
+
+print(paste("The AIC of BM1 is", AIC.BM1))
+print(paste("The AIC of OU1 is", AIC.OU1))
+print(paste("The deltaAIC of BM1 is", delta.AIC.BM1))
+print(paste("The deltaAIC of OU1 is", delta.AIC.OU1))
+```
+
+Assign regimes. Use an ancestral state estimation of a discrete trait. Use just one discrete character.
+```{r, eval = TRUE}
+one.discrete.char <- continuous.data["Morph"]
+# make the discrete character a vector
+one.discrete.char <- one.discrete.char[,1]
+names(one.discrete.char) <- rownames(continuous.data)
+
+# find the likelihood of each value (0, 1, 2) at the nodes
+reconstruction.info <- ace(x = one.discrete.char, phy = sq_tree, type="discrete", method="ML", CI=TRUE)
+
+# look across the liklihoods of the three options in the discrete data and pick the best one.
+best.states <- colnames(reconstruction.info$lik.anc)[apply(reconstruction.info$lik.anc, 1, which.max)]
+
+# the best.states didn't have the same length... but it's the value at the nodes, so it should have one less value than tips. 
+# I can get the next section to work if I arbitrarily add a number to the best.states when I make the dataframe. Probably a bad idea. 
+# df <- data.frame(species = names(subset.continuous.data), regime = c(best.states, "0"), continuous = subset.continuous.data)
+#### df <- data.frame(species = names(subset.continuous.data), regime = best.states, continuous = subset.continuous.data)
+# Error in data.frame(species = names(subset.continuous.data), regime = best.states, : arguments imply differing number of rows: 258, 257
+```
+
+Add the labels to the tree.
+```{r, eval = TRUE}
+# labeled.tree <- ace(one.discrete.char, sq_tree, model = "ER", type = "discrete")
+
+# labeled.tree <- make.simmap(sq_tree, one.discrete.char, model = "ER")
+
+# plot(labeled.tree)
+# nodeBased.OUMV <- OUwie(phy = labeled.tree, 
+#                         data = df, #I need to figure out how to make the regimes the same length as the dataframe :|
+#                         model = "OUMV", 
+#                         simmap.tree = TRUE, 
+#                         diagn = FALSE)
+# print(nodeBased.OUMV)
+```
+
+
+```{r, eval = TRUE}
+# models <- c("BM1","BMS","OU1","OUM","OUMV","OUMA","OUMVA")
+# results <- lapply(models, 
+#                   OUwie, # how do I use lapply to run a function over a list?
+#                   phy = sq_tree, 
+#                   data = subset.continuous.data)
+# 
+# AICc.values<-sapply(results, "[[", "AICc")
+# names(AICc.values)<-models
+# AICc.values<-AICc.values-min(AICc.values)
+# 
+# 
+# print(AICc.values) #The best model is the one with smallest AICc score
+# 
+# best<-results[[which.min(AICc.values)]] #store for later
+# 
+# print(best) #prints info on best model
+```
+
