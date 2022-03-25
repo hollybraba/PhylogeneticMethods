@@ -128,6 +128,8 @@ best.states <- colnames(reconstruction.info$lik.anc)[apply(reconstruction.info$l
 
 Add the labels to the tree.
 ```{r, eval = TRUE}
+
+# This was a helpful website https://www.phytools.org/eqg2015/asr.html
 # labeled.tree <- ace(one.discrete.char, sq_tree, model = "ER", type = "discrete")
 
 # labeled.tree <- make.simmap(sq_tree, one.discrete.char, model = "ER")
