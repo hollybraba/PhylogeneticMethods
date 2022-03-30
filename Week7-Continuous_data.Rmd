@@ -48,7 +48,7 @@ CleanData(sq_tree, continuous.data)
 df.subset.continuous.data <- log(continuous.data["SVL"])
 subset.continuous.data <- df.subset.continuous.data[,1]
 names(subset.continuous.data) <- rownames(df.subset.continuous.data)
-hist(subset.continuous.data)
+hist(subset.continuous.data, xlab = "log(SVL)")
 
 print(ape::Ntip(sq_tree))
 print(length(subset.continuous.data))
@@ -72,7 +72,7 @@ Rate of evolution
 ```{r, eval = TRUE}
 BM1 <- geiger::fitContinuous(sq_tree, subset.continuous.data, model = "BM")
 
-print(paste("The rate of evolution is", BM1$opt$sigsq, "in units of", "log(mm^2) / time"))
+print(paste("The rate of evolution is", exp(BM1$opt$sigsq), "in units of", "mm^2 / time"))
 ```
 
 Changing alpha changes how much stretch there is. How to determine alpha?
@@ -130,36 +130,67 @@ Add the labels to the tree.
 ```{r, eval = TRUE}
 
 # This was a helpful website https://www.phytools.org/eqg2015/asr.html
-# labeled.tree <- ace(one.discrete.char, sq_tree, model = "ER", type = "discrete")
+labeled.tree <- ace(one.discrete.char, sq_tree, model = "ER", type = "discrete")
 
-# labeled.tree <- make.simmap(sq_tree, one.discrete.char, model = "ER")
+labeled.simmap.tree <- phytools::make.simmap(ape::chronos(sq_tree), one.discrete.char)
 
-# plot(labeled.tree)
-# nodeBased.OUMV <- OUwie(phy = labeled.tree, 
-#                         data = df, #I need to figure out how to make the regimes the same length as the dataframe :|
-#                         model = "OUMV", 
-#                         simmap.tree = TRUE, 
-#                         diagn = FALSE)
-# print(nodeBased.OUMV)
+discrete.recon <- ape::ace(one.discrete.char, labeled.simmap.tree, type = "discrete") # reconstructions at internal nodes only
+
+best.recon <- apply(discrete.recon$lik.anc, 1, which.max) # best reconstruction at each internal node
+
+labeled.simmap.tree$Nnode <- 257 # I had a list for Nnode, but Jackson's example data was the number of nodes in the tree.
+
+# make a data set for the species at the tips: name, regime (placeholder), continuous trait
+ouwie_data <- data.frame(Species = rownames(continuous.data), Reg = NA, Trait = subset.continuous.data)
+ouwie_data$Reg <- as.numeric(ouwie_data$Reg)
+
+for (ouwie_row in sequence(nrow(ouwie_data))) {
+  ouwie_data$Reg[ouwie_row] <- one.discrete.char[ouwie_data$Species[ouwie_row]] # for the ith species on the ouwie data, look up the same species name in the discrete tip data and assign that as the "regime"
+}
+
+# plot(labeled.simmap.tree)
+
 ```
 
 
 ```{r, eval = TRUE}
-# models <- c("BM1","BMS","OU1","OUM","OUMV","OUMA","OUMVA")
-# results <- lapply(models, 
-#                   OUwie, # how do I use lapply to run a function over a list?
-#                   phy = sq_tree, 
-#                   data = subset.continuous.data)
-# 
-# AICc.values<-sapply(results, "[[", "AICc")
-# names(AICc.values)<-models
-# AICc.values<-AICc.values-min(AICc.values)
-# 
-# 
-# print(AICc.values) #The best model is the one with smallest AICc score
-# 
-# best<-results[[which.min(AICc.values)]] #store for later
-# 
-# print(best) #prints info on best model
+
+oumv <- OUwie(phy = labeled.simmap.tree, data = ouwie_data, model = "OUMV", simmap.tree = TRUE)
+
+bms <- OUwie(phy = labeled.simmap.tree, data = ouwie_data, model = "BMS", simmap.tree = TRUE)
+
+ou1 <- OUwie(phy = labeled.simmap.tree, data = ouwie_data, model = "OU1", simmap.tree = TRUE)
+
+oum <- OUwie(phy = labeled.simmap.tree, data = ouwie_data, model = "OUM", simmap.tree = TRUE)
+
+ouma <- OUwie(phy = labeled.simmap.tree, data = ouwie_data, model = "OUMA", simmap.tree = TRUE)
+
+results <- (c(oumv$AICc, bms$AICc, ou1$AICc, oum$AICc, ouma$AICc))
+print(results)
+best <- results[[which.min(results)]]
+print(paste("The lowest/best AICc value is for the OUMV model:", best)) #prints info on best model
 ```
+
+Keep all parameters but alpha at their maximum likelihood estimates and try a range of alpha values.
+```{r}
+alpha.values <- seq(from = 0.01, to = 20, length.out = 50)
+```
+
+Use a for loop to test
+```{r}
+likelihood.values <- rep(NA, length(alpha.values))
+
+# for (iteration in sequence(length(alpha.values))) {
+#   likelihood.values[iteration] <- OUwie.fixed(labeled.simmap.tree, ouwie_data, model = "OUMV", simmap.tree = TRUE, alpha = rep(alpha.values[iteration],2), sigma.sq = oumv$solution[2,], theta = oumv$theta[,1])$loglik
+# }
+
+
+
+```
+
+Error in Rate.mat[1, 1:k] <- alpha : 
+  number of items to replace is not a multiple of replacement length
+
+
+I can't get the for loop to work...
 
