@@ -1,0 +1,193 @@
+---
+title: "R Notebook"
+output:
+  html_document:
+    df_print: paged
+---
+
+Following along with Dr. O'Meara's correlation models assignment (http://phylometh.info/correlations.html).
+```{r}
+library(geiger)
+library(ape)
+library(corHMM)
+# using the data included with the assignment
+tree.primates <- read.tree(text = "((((Homo:0.21,Pongo:0.21):0.28,Macaca:0.49):0.13,Ateles:0.62):0.38,Galago:1.00);") # make a tree
+X <- c(4.09434, 3.61092, 2.37024, 2.02815, -1.46968) # what are these? Two different traits?
+Y <- c(4.74493, 3.33220, 3.36730, 2.89037, 2.30259)
+
+names(X) <- names(Y) <- c("Homo", "Pongo", "Macaca", "Ateles", "Galago") # add names to the data. 
+pic.X <- pic(X, tree.primates) # compute the phylogenetically independent contrasts using the method described by Felsenstein (1985)
+pic.Y <- pic(Y, tree.primates)
+```
+
+Positivitize the contrasts and do a regression through the origin. 
+```{r}
+require("corHMM") # just like library(), but is for packages that are used within a function.
+# corHMM extimates hidden rates underlying the evolution of a binary character. It's a hidden rates model. 
+data(primates)
+ls() # lists all data and values in the environment
+print(primates)
+require(phytools)
+```
+
+We would like to have all 4 trait combinations present for this exercise, but it's making up data, so it's just for educational purposes!
+```{r}
+primates$trait[which(grepl("Hylobates", primates$trait[,1])),2] <- 1
+
+trait1 <- primates$trait[,2]
+names(trait1) <- primates$trait[,1]
+primates$tree <- ape::multi2di(primates$tree)
+plotSimmap(make.simmap(primates$tree, trait1), 
+           pts = FALSE, 
+           fsize = 0.8)
+rate.mat.er <- corHMM:::rate.mat.maker(rate.cat = 1,
+                              hrm = FALSE,
+                              ntraits = 1,
+                              nstates = 2,
+                              model = "ER") # equal rates model
+# makes a rate matrix, can make a matrix without this code if needed.
+# rate matrix maker in the corHMM package doesn't exist anymore, so use ::: to find it :)
+print(rate.mat.er)
+```
+
+This matrix is the probability of changing between the different states. In this example, it is equally probable to change from 1 to 2 as it is from 2 to 1.
+```{r}
+pp.er <- corHMM(phy = primates$tree,
+                data = primates$trait[,c(1,2)],
+                rate.cat = 1,
+                rate.mat = rate.mat.er,
+                node.states = "marginal")
+print(pp.er)
+```
+These are the optimized rates we entered for rate.mat.er. Inferred ancestral states using marginal reconstruction. Estimates hidden rates underlying the evolution of a binary character.
+The results mean that the likelihood of switching from 1->2 and 2->1 is still equal.
+
+```{r}
+rate.mat.ard <- corHMM:::rate.mat.maker(rate.cat = 1,
+                                        hrm = FALSE,
+                                        ntraits = 1,
+                                        nstates = 2,
+                                        model = "ARD") # ARD = all rates different model
+print(rate.mat.ard)
+```
+The matrix has two different rates for the two different switches
+
+```{r}
+pp.ard <- corHMM(phy = primates$tree,
+                 data = primates$trait[,c(1,2)],
+                 rate.cat = 1,
+                 rate.mat = rate.mat.ard,
+                 node.states = "marginal")
+print(pp.ard)
+```
+These are the optimized rates, but because we used the "All Rates Different" model the rates are different.
+
+Which model is better?
+```{r}
+print(paste("Equal rates model AICc =", pp.er$AICc, "All rates different model AICc =", pp.ard$AICc))
+```
+The equal rates model has a lower AICc, so it fits the data better.
+
+Multiple Traits
+
+Matrix with 4 states
+```{r}
+rate.mat.er.4state <- corHMM:::rate.mat.maker(rate.cat = 1,
+                                              hrm = FALSE,
+                                              ntraits = 1,
+                                              nstates = 4,
+                                              model = "ER")
+print(rate.mat.er.4state)
+```
+
+Now convert the two binary traits into a single four character state.
+```{r}
+fourstate.trait <- rep(NA, Ntip(primates$tree))
+for(i in sequence(Ntip(primates$tree))) {
+  if(primates$trait[i,2] == 0 && primates$trait[i,3] == 0) {
+    fourstate.trait[i] <- 0
+  }
+  if(primates$trait[i,2] == 0 && primates$trait[i,3] == 1) {
+    fourstate.trait[i] <- 1
+  }
+  if(primates$trait[i,2] == 1 && primates$trait[i,3] == 0) {
+  fourstate.trait[i] <- 2
+  }
+  if(primates$trait[i,2] == 1 && primates$trait[i,3] == 1) {
+  fourstate.trait[i] <- 3
+  }
+}
+fourstate.data <- data.frame(Genus_sp = primates$trait[,1],
+                             T1 = fourstate.trait)
+print(rayDISC(phy = primates$tree,
+              data = fourstate.data,
+              ntraits = 1,
+              model = "ER",
+              node.states = "marginal"))
+# rayDISC fits a model of evolution for categorical traits (multistate ok, polymorphisms ok, missing data ok, and incomplete resolution on tree ok).
+print(rayDISC(phy = primates$tree,
+              data = fourstate.data,
+              ntraits = 1,
+              rate.mat = rate.mat.er.4state,
+              model = "ARD",
+              node.states = "marginal"))
+rate.mat.ard.4state <- corHMM:::rate.mat.maker(rate.cat = 1,
+                                               hrm = FALSE,
+                                               ntraits = 1,
+                                               nstates = 4,
+                                               model = "ARD")
+print(rate.mat.ard.4state)
+```
+
+GTR (generalized time reversible) matrix:
+```{r}
+rate.mat.gtr.4states <- rate.mat.ard.4state
+rate.mat.gtr.4states <- corHMM:::rate.par.eq(rate.mat.index = rate.mat.gtr.4states, eq.par = c(1,4))
+rate.mat.gtr.4states <- corHMM:::rate.par.eq(rate.mat.index = rate.mat.gtr.4states, eq.par = c(2,6))
+rate.mat.gtr.4states <- corHMM:::rate.par.eq(rate.mat.index = rate.mat.gtr.4states, eq.par = c(3,8))
+rate.mat.gtr.4states <- corHMM:::rate.par.eq(rate.mat.index = rate.mat.gtr.4states, eq.par = c(4,6))
+rate.mat.gtr.4states <- corHMM:::rate.par.eq(rate.mat.index = rate.mat.gtr.4states, eq.par = c(5,7))
+rate.mat.gtr.4states <- corHMM:::rate.par.eq(rate.mat.index = rate.mat.gtr.4states, eq.par = c(6,7))
+
+print(rate.mat.gtr.4states) # we went through and made the top-right half of the matrix mirror the bottom-left half of the matrix (reversible!)
+
+print(rayDISC(phy = primates$tree,
+              data = fourstate.data,
+              ntraits = 1,
+              rate.mat = rate.mat.gtr.4states,
+              node.states = "marginal",
+              model = "ARD"))
+```
+These are the optimized rates for each change (but reversible).
+
+Make a Pagel 1994 model
+```{r}
+print(corHMM:::rate.mat.maker(rate.cat = 1,
+                              hrm = FALSE,
+                              ntraits = 2,
+                              nstates = 2,
+                              model = "ARD"))
+rate.mat.pag94 <- corHMM:::rate.par.drop(rate.mat.ard.4state,
+                                         drop.par = c(3,5,8,10))
+print(rate.mat.pag94)
+```
+
+Optimize the rates for Pagel 94.
+```{r}
+print(rayDISC(phy = primates$tree,
+              data = fourstate.data,
+              ntraits = 1,
+              rate.mat = rate.mat.pag94,
+              node.states = "marginal",
+              model = "ARD"))
+```
+
+Read and Nee (1995) suggested a paired design - similar to a medical study where one person receives a treatment, the other doesn't and that counts as one sample. If you pair the data from one taxa with the other, then it's a similar experimental design. 
+Their example of warning coloration and gregariousness says something about having warning color (first trait) increases the chance that it would be gregarious (second trait), so a rate matrix would show a higher rate for 0,0 -> 1,1 than expected based on the rate for just 0,0 -> 1,0. 
+
+
+
+
+
+
+
