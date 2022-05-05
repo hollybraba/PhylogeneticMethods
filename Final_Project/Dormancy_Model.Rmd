@@ -18,6 +18,7 @@ Usually only external forces such as environmental conditions or resource availa
 -If no competition, species without dormancy will have a higher speciation rate and lower extinction rate
 -If competition present, species with dormancy will have a higher speciation rate and lower extinction rate
 
+Key:
 SpN = Not dormancy capable species
 SpD = Dormancy capable species
 Rep = Reproduction rate
@@ -42,7 +43,7 @@ ER = ExtinctionRate
 # SpN_SR <- 
 # SpN_ER <- 
 ```
-
+load required packages
 ```{r}
 library("hisse")
 library("diversitree")
@@ -57,6 +58,7 @@ ls() # lists all data and values in the environment
 print(primates)
 require(phytools)
 ```
+I'm going to use the primate data used in the homework.
 I want to have all possible trait combinations, so I made everything in the Hylobates genera have 1 for T1 (warning: made-up data!)
 ```{r}
 primates$trait[which(grepl("Hylobates", primates$trait[,1])),2] <- 1
@@ -111,7 +113,7 @@ pp = hisse.old(phy = primates,
                eps.anc = eps.anc,
                trans.rate = allequal.dormancy.trans.rates)
 ```
-Error in UseMethod("Ntip") : no applicable method for 'Ntip' applied to an object of class "list"
+!!!!!Error in UseMethod("Ntip") : no applicable method for 'Ntip' applied to an object of class "list"
 
 ```{r}
 # # makes a rate matrix, can make a matrix without this code if needed.
