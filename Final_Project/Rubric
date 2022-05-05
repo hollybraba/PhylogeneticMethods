@@ -1,1 +1,10 @@
+Final project rubric
+EEB 587: Spring 2022
 
+100 points possible
+
+50 points: Make a BiSSE(?) model that incorporates dormancy in the birth/death rates.
+
+25 points: Run simulations with different reproduction, death, and escape rates.
+
+25 points: Plot the results of the simulation.
