@@ -45,6 +45,7 @@ ER = ExtinctionRate
 
 ```{r}
 library("hisse")
+library("diversitree")
 ```
 
 Use phylogeny and trait data from homework 8 to make and test the model.
@@ -71,39 +72,116 @@ plotSimmap(make.simmap(primates$tree, trait1),
            fsize = 0.8)
 ```
 
-Make a correlation matrix: compare "equal rates" to "all rates different"
+# I might not need to make a correlation matrix...!?
+-Make a correlation matrix: compare "equal rates" to "all rates different"
+-This will help fill in the transition rates in "pars" in the tree.musse part.
+-I want to keep some dual transitions (1A -> 0B and 0B -> 1A) because competition may be introduced as a result of losing dormancy and competition might be removed as a result of gaining dormancy. 
 ```{r}
-# makes a rate matrix, can make a matrix without this code if needed.
-# rate matrix maker in the corHMM package doesn't exist anymore, so use ::: to find it :)
-rate.mat.er <- corHMM:::rate.mat.maker(rate.cat = 1,
-                              hrm = FALSE,
-                              ntraits = 1,
-                              nstates = 2,
-                              model = "ER") # equal rates model
-# find the optimized rates
-pp.er <- corHMM(phy = primates$tree,
-                data = primates$trait[,c(1,2)],
-                rate.cat = 1,
-                rate.mat = rate.mat.er,
-                node.states = "marginal")
+trans.rates = TransMatMaker.old(hidden.states=TRUE)
+dormancy.trans.rates = ParDrop(trans.rates, c(3, 10))
+allequal.dormancy.trans.rates = ParEqual(dormancy.trans.rates,
+                                         c(1,2,
+                                           1,3,
+                                           1,4,
+                                           1,5,
+                                           1,6,
+                                           1,7,
+                                           1,8,
+                                           1,9,
+                                           1,10))
+allequal.dormancy.trans.rates
+```
+Supply this transition matrix to the trans.rate= argument in hisse()
+
+I need to make turnover and extinction rates for a HiSSE model. And also make the two column matrix or data frame, with the first column containing the species names and the second containing the binary character information.
+```{r}
+turnover.anc = c(1, 2, 3, 4)
+eps.anc = c(1, 2, 3, 4)
+phy.dat = data.frame(names(phy$tip.state), phy$tip.state)
+phy.dat = phy.dat
+```
 
 
-rate.mat.ard <- corHMM:::rate.mat.maker(rate.cat = 1,
-                                        hrm = FALSE,
-                                        ntraits = 1,
-                                        nstates = 2,
-                                        model = "ARD") # ARD = all rates different model
-# find the optimized rates
-pp.ard <- corHMM(phy = primates$tree,
-                 data = primates$trait[,c(1,2)],
-                 rate.cat = 1,
-                 rate.mat = rate.mat.ard,
-                 node.states = "marginal")
+```{r}
+pp = hisse.old(phy = primates,
+               data = phy.dat,
+               f = c(1,1),
+               hidden.states = TRUE,
+               turnover.anc = turnover.anc,
+               eps.anc = eps.anc,
+               trans.rate = allequal.dormancy.trans.rates)
+```
+Error in UseMethod("Ntip") : no applicable method for 'Ntip' applied to an object of class "list"
 
+```{r}
+# # makes a rate matrix, can make a matrix without this code if needed.
+# # rate matrix maker in the corHMM package doesn't exist anymore, so use ::: to find it :)
+# rate.mat.er <- corHMM:::rate.mat.maker(rate.cat = 1,
+#                               hrm = FALSE,
+#                               ntraits = 2,
+#                               nstates = 4,
+#                               model = "ER") # equal rates model
+# # find the optimized rates
+# pp.er <- corHMM(phy = primates$tree,
+#                 data = primates$trait[,c(1,2)],
+#                 rate.cat = 1,
+#                 rate.mat = rate.mat.er,
+#                 node.states = "marginal")
+# 
+# 
+# rate.mat.ard <- corHMM:::rate.mat.maker(rate.cat = 1,
+#                                         hrm = FALSE,
+#                                         ntraits = 2,
+#                                         nstates = 4,
+#                                         model = "ARD") # ARD = all rates different model
+# # find the optimized rates
+# pp.ard <- corHMM(phy = primates$tree,
+#                  data = primates$trait[,c(1,2)],
+#                  rate.cat = 1,
+#                  rate.mat = rate.mat.ard,
+#                  node.states = "marginal")
+# 
+# 
+# if (pp.er$AICc < pp.ard$AICc) {
+#   print(paste("The equal rates model AICc (", pp.er$AICc, ") is lower than the all rates different model AICc (", pp.ard$AICc, ")"))
+# } else {
+#   print(paste("The all rates different model AICc (", pp.ard$AICc, ") is lower than the equal rates  model AICc (", pp.er$AICc, ")"))
+# }
+```
+```{r}
+# print(pp.er)
+```
+If I can figure out the rate matrix above, I will continue this method below. 
 
-if (pp.er$AICc < pp.ard$AICc) {
-  print(paste("The equal rates model AICc (", pp.er$AICc, ") is lower than the all rates different model AICc (", pp.ard$AICc, ")"))
-} else {
-  print(paste("The all rates different model AICc (", pp.ard$AICc, ") is lower than the equal rates  model AICc (", pp.er$AICc, ")"))
-}
+I am going to try and model this like a tree-plus-trait model (HiSSE).
+The trait I know is 0 = no_dormancy, 1 = dormancy.
+The hidden trait is A = no_competition, B = competition.
+
+SpN = Not dormancy capable species
+SpD = Dormancy capable species
+Rep = Reproduction rate
+Dea = Death rate
+Ext = Extinction rate
+Pop = Population size
+Esc = Escape rate
+SR = SpeciationRate
+ER = ExtinctionRate
+
+```{r}
+speciation.rates <- c(0.2, 0.1, 0.1, 0.2) #0A, 1A, 0B, 1B
+# chose higher speciation rates for:
+#   0A (no dormancy, no competition)
+#   1B (dormancy, competition)
+extinction.rates <- c(0.1, 0.1, 0.5, 0.1)
+# chose higher extinction rate for:
+#   0B (no dormancy, competition)
+transition.rates <- c(0.01,0.01,0, 0.01, 0, 0.01, 0.01,0,0.01, 0,0.01,0.01)
+pars <- c(speciation.rates, extinction.rates, transition.rates)
+phy <- tree.musse(pars = pars, 
+                  max.taxa = 50, 
+                  x0 = 1, 
+                  include.extinct = FALSE) 
+# vector of pararmeters. Same order as unconstrained likelihood function returned by make.x for tree type x.
+# maximum number of taxa in tree
+# initial character state at root
 ```
