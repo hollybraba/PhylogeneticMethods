@@ -18,8 +18,8 @@ Usually only external forces such as environmental conditions or resource availa
 -If no competition, species without dormancy will have a higher speciation rate and lower extinction rate
 -If competition present, species with dormancy will have a higher speciation rate and lower extinction rate
 
-SpD = Not dormancy capable species
-SpN = Dormancy capable species
+SpN = Not dormancy capable species
+SpD = Dormancy capable species
 Rep = Reproduction rate
 Dea = Death rate
 Ext = Extinction rate
