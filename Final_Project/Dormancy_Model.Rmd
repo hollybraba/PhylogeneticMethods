@@ -1,22 +1,19 @@
 ---
 title: "The effect of dormancy on extinction probability"
-output:
-  html_document:
-    df_print: paged
+output: html_notebook
 ---
 
 Based on:
 Lennon, J. T., den Hollander, F., Wilke-Berenguer, M. & Blath, J. Principles of seed banks and the emergence of complexity from dormancy. Nature Communications 12, (2021).
 
-Usually only external forces such as environmental conditions or resource availability are considered when looking at fluctuations and competition between species, but the ability to enter dormancy can have a significant impact in how successful a species is during competition. This model will model how extinction rates across phylogeny vary with dormancy.
+Usually only external forces such as environmental conditions or resource availability are considered when looking at fluctuations and competition between species, but the ability to enter dormancy can have a significant impact in how successful a species is during competition. This model will model how speciation and extinction rates vary across a phylogeny with dormancy as a known trait and competition as a hidden trait (HiSSE).
 
 ###########################
--Taxa with dormancy grow slower than non-dormancy
--Taxa with dormancy outcompete non-dormancy
--Taxa without dormancy grow faster than dormancy
--Taxa without dormancy are outcompeted by dormancy
--If no competition, species without dormancy will have a higher speciation rate and lower extinction rate
--If competition present, species with dormancy will have a higher speciation rate and lower extinction rate
+-Taxa with dormancy have a slower growth rate than non-dormancy.
+-Taxa with dormancy outcompete taxa without dormancy.
+-Taxa without dormancy have a faster growth rate than taxa with dormancy.
+-If no competition is present, species without dormancy will have a higher speciation rate and lower extinction rate.
+-If competition is present, species with dormancy will have a higher speciation rate and lower extinction rate
 
 Key:
 SpN = Not dormancy capable species
@@ -28,7 +25,7 @@ Pop = Population size
 Esc = Escape rate
 SR = SpeciationRate
 ER = ExtinctionRate
-```{r}
+```{r, cache = TRUE}
 # SpD_Rep <-  # > 0, < Sp1_Re
 # SpD_Dea <-  # < Sp2_Re
 # SpD_Esc <- 
@@ -44,13 +41,13 @@ ER = ExtinctionRate
 # SpN_ER <- 
 ```
 load required packages
-```{r}
+```{r, cache = TRUE}
 library("hisse")
 library("diversitree")
 ```
 
 Use phylogeny and trait data from homework 8 to make and test the model.
-```{r}
+```{r, cache = TRUE}
 require("corHMM") # just like library(), but is for packages that are used within a function.
 # corHMM extimates hidden rates underlying the evolution of a binary character. It's a hidden rates model. 
 data(primates)
@@ -60,12 +57,12 @@ require(phytools)
 ```
 I'm going to use the primate data used in the homework.
 I want to have all possible trait combinations, so I made everything in the Hylobates genera have 1 for T1 (warning: made-up data!)
-```{r}
+```{r, cache = TRUE}
 primates$trait[which(grepl("Hylobates", primates$trait[,1])),2] <- 1
 print(primates)
 ```
 
-```{r}
+```{r, cache = TRUE}
 trait1 <- primates$trait[,2]
 names(trait1) <- primates$trait[,1]
 primates$tree <- ape::multi2di(primates$tree)
@@ -74,11 +71,10 @@ plotSimmap(make.simmap(primates$tree, trait1),
            fsize = 0.8)
 ```
 
-# I might not need to make a correlation matrix...!?
 -Make a correlation matrix: compare "equal rates" to "all rates different"
 -This will help fill in the transition rates in "pars" in the tree.musse part.
--I want to keep some dual transitions (1A -> 0B and 0B -> 1A) because competition may be introduced as a result of losing dormancy and competition might be removed as a result of gaining dormancy. 
-```{r}
+-I want to keep some dual transitions (1A -> 0B and 0B -> 1A) because competition may be introduced as a result of losing dormancy and competition might be removed as a result of gaining dormancy. But I don't want to keep 0A -> 1B and 1B -> 0A, because it seems unlikely to gain competition when gaining dormancy, or lose dormancy and competition at the same time. 
+```{r, cache = TRUE}
 trans.rates = TransMatMaker.old(hidden.states=TRUE)
 dormancy.trans.rates = ParDrop(trans.rates, c(3, 10))
 allequal.dormancy.trans.rates = ParEqual(dormancy.trans.rates,
@@ -96,7 +92,7 @@ allequal.dormancy.trans.rates
 Supply this transition matrix to the trans.rate= argument in hisse()
 
 I need to make turnover and extinction rates for a HiSSE model. And also make the two column matrix or data frame, with the first column containing the species names and the second containing the binary character information.
-```{r}
+```{r, cache = TRUE}
 turnover.anc = c(1, 2, 3, 4)
 eps.anc = c(1, 2, 3, 4)
 phy.dat = data.frame(names(phy$tip.state), phy$tip.state)
@@ -104,7 +100,7 @@ phy.dat = phy.dat
 ```
 
 
-```{r}
+```{r, cache = TRUE}
 pp = hisse.old(phy = primates,
                data = phy.dat,
                f = c(1,1),
@@ -112,10 +108,21 @@ pp = hisse.old(phy = primates,
                turnover.anc = turnover.anc,
                eps.anc = eps.anc,
                trans.rate = allequal.dormancy.trans.rates)
+
 ```
 !!!!!Error in UseMethod("Ntip") : no applicable method for 'Ntip' applied to an object of class "list"
 
-```{r}
+Or is this what I want to do instead of the previous chunk?
+```{r, cache = TRUE}
+pp.er <- corHMM(phy = primates$tree,
+                data = primates$trait[,c(1,2)],
+                rate.cat = 1,
+                rate.mat = allequal.dormancy.trans.rates,
+                node.states = "marginal")
+```
+
+
+```{r, cache = TRUE}
 # # makes a rate matrix, can make a matrix without this code if needed.
 # # rate matrix maker in the corHMM package doesn't exist anymore, so use ::: to find it :)
 # rate.mat.er <- corHMM:::rate.mat.maker(rate.cat = 1,
@@ -150,7 +157,7 @@ pp = hisse.old(phy = primates,
 #   print(paste("The all rates different model AICc (", pp.ard$AICc, ") is lower than the equal rates  model AICc (", pp.er$AICc, ")"))
 # }
 ```
-```{r}
+```{r, cache = TRUE}
 # print(pp.er)
 ```
 If I can figure out the rate matrix above, I will continue this method below. 
@@ -169,7 +176,7 @@ Esc = Escape rate
 SR = SpeciationRate
 ER = ExtinctionRate
 
-```{r}
+```{r, cache = TRUE}
 speciation.rates <- c(0.2, 0.1, 0.1, 0.2) #0A, 1A, 0B, 1B
 # chose higher speciation rates for:
 #   0A (no dormancy, no competition)
