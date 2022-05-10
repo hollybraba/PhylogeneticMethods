@@ -1,6 +1,8 @@
 ---
 title: "The effect of dormancy on extinction probability"
-output: html_notebook
+output:
+  html_document:
+    df_print: paged
 ---
 
 Based on:
@@ -44,6 +46,7 @@ load required packages
 ```{r, cache = TRUE}
 library("hisse")
 library("diversitree")
+library("ape")
 ```
 
 Use phylogeny and trait data from homework 8 to make and test the model.
@@ -91,6 +94,15 @@ allequal.dormancy.trans.rates
 ```
 Supply this transition matrix to the trans.rate= argument in hisse()
 
+```{r, cache = TRUE}
+pp.er <- corHMM(phy = primates$tree,
+                data = primates$trait[,c(1,2)],
+                rate.cat = 1,
+                rate.mat = allequal.dormancy.trans.rates,
+                node.states = "marginal")
+pp.er
+```
+
 I am going to try and model this like a tree-plus-trait model (HiSSE).
 The trait I know is 0 = no_dormancy, 1 = dormancy.
 The hidden trait is A = no_competition, B = competition.
@@ -113,7 +125,18 @@ speciation.rates <- c(0.2, 0.1, 0.1, 0.2) #0A, 1A, 0B, 1B
 extinction.rates <- c(0.1, 0.1, 0.5, 0.1)
 # chose higher extinction rate for:
 #   0B (no dormancy, competition)
-transition.rates <- c(0.01,0.01,0, 0.01, 0, 0.01, 0.01,0,0.01, 0,0.01,0.01)
+transition.rates <- c(0.003772616,
+                      0.003772616,
+                      0, 
+                      0.003772616,
+                      0.003772616, 
+                      0.003772616, 
+                      0.003772616,
+                      0.003772616,
+                      0.003772616, 
+                      0,
+                      0.003772616,
+                      0.003772616)
 pars <- c(speciation.rates, extinction.rates, transition.rates)
 phy <- tree.musse(pars = pars, 
                   max.taxa = 50, 
@@ -126,16 +149,16 @@ phy <- tree.musse(pars = pars,
 
 I need to make turnover and extinction rates for a HiSSE model. And also make the two column matrix or data frame, with the first column containing the species names and the second containing the binary character information.
 ```{r, cache = TRUE}
-turnover.anc = c(1, 2, 3, 4)
-eps.anc = c(1, 2, 3, 4)
-phy.dat = data.frame(names(phy$tip.state), phy$tip.state)
-phy.dat = phy.dat
+turnover.anc <- c(1, 2, 3, 4)
+eps.anc <- c(1, 2, 3, 4)
+phy.dat <- data.frame(names(phy$tip.state), phy$tip.state)
+# phy.dat <- phy.dat
 ```
 
 
 ```{r, cache = TRUE}
-pp = hisse.old(phy = primates,
-               data = phy.dat,
+pp = hisse.old(phy = primates$tree,
+               data = primates$trait,
                f = c(1,1),
                hidden.states = TRUE,
                turnover.anc = turnover.anc,
@@ -146,13 +169,7 @@ pp = hisse.old(phy = primates,
 !!!!!Error in UseMethod("Ntip") : no applicable method for 'Ntip' applied to an object of class "list"
 
 Or is this what I want to do instead of the previous chunk?
-```{r, cache = TRUE}
-pp.er <- corHMM(phy = primates$tree,
-                data = primates$trait[,c(1,2)],
-                rate.cat = 1,
-                rate.mat = allequal.dormancy.trans.rates,
-                node.states = "marginal")
-```
+
 
 
 ```{r, cache = TRUE}
