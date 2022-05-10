@@ -91,6 +91,39 @@ allequal.dormancy.trans.rates
 ```
 Supply this transition matrix to the trans.rate= argument in hisse()
 
+I am going to try and model this like a tree-plus-trait model (HiSSE).
+The trait I know is 0 = no_dormancy, 1 = dormancy.
+The hidden trait is A = no_competition, B = competition.
+
+SpN = Not dormancy capable species
+SpD = Dormancy capable species
+Rep = Reproduction rate
+Dea = Death rate
+Ext = Extinction rate
+Pop = Population size
+Esc = Escape rate
+SR = SpeciationRate
+ER = ExtinctionRate
+
+```{r, cache = TRUE}
+speciation.rates <- c(0.2, 0.1, 0.1, 0.2) #0A, 1A, 0B, 1B
+# chose higher speciation rates for:
+#   0A (no dormancy, no competition)
+#   1B (dormancy, competition)
+extinction.rates <- c(0.1, 0.1, 0.5, 0.1)
+# chose higher extinction rate for:
+#   0B (no dormancy, competition)
+transition.rates <- c(0.01,0.01,0, 0.01, 0, 0.01, 0.01,0,0.01, 0,0.01,0.01)
+pars <- c(speciation.rates, extinction.rates, transition.rates)
+phy <- tree.musse(pars = pars, 
+                  max.taxa = 50, 
+                  x0 = 1, 
+                  include.extinct = FALSE) 
+# vector of pararmeters. Same order as unconstrained likelihood function returned by make.x for tree type x.
+# maximum number of taxa in tree
+# initial character state at root
+```
+
 I need to make turnover and extinction rates for a HiSSE model. And also make the two column matrix or data frame, with the first column containing the species names and the second containing the binary character information.
 ```{r, cache = TRUE}
 turnover.anc = c(1, 2, 3, 4)
@@ -162,35 +195,4 @@ pp.er <- corHMM(phy = primates$tree,
 ```
 If I can figure out the rate matrix above, I will continue this method below. 
 
-I am going to try and model this like a tree-plus-trait model (HiSSE).
-The trait I know is 0 = no_dormancy, 1 = dormancy.
-The hidden trait is A = no_competition, B = competition.
 
-SpN = Not dormancy capable species
-SpD = Dormancy capable species
-Rep = Reproduction rate
-Dea = Death rate
-Ext = Extinction rate
-Pop = Population size
-Esc = Escape rate
-SR = SpeciationRate
-ER = ExtinctionRate
-
-```{r, cache = TRUE}
-speciation.rates <- c(0.2, 0.1, 0.1, 0.2) #0A, 1A, 0B, 1B
-# chose higher speciation rates for:
-#   0A (no dormancy, no competition)
-#   1B (dormancy, competition)
-extinction.rates <- c(0.1, 0.1, 0.5, 0.1)
-# chose higher extinction rate for:
-#   0B (no dormancy, competition)
-transition.rates <- c(0.01,0.01,0, 0.01, 0, 0.01, 0.01,0,0.01, 0,0.01,0.01)
-pars <- c(speciation.rates, extinction.rates, transition.rates)
-phy <- tree.musse(pars = pars, 
-                  max.taxa = 50, 
-                  x0 = 1, 
-                  include.extinct = FALSE) 
-# vector of pararmeters. Same order as unconstrained likelihood function returned by make.x for tree type x.
-# maximum number of taxa in tree
-# initial character state at root
-```
