@@ -1,0 +1,68 @@
+---
+title: "Final Project"
+output: html_notebook
+---
+
+Using diversitree packages...
+```{r}
+library("diversitree")
+library("ape")
+library("phangorn")
+```
+
+Use phylogeny and trait data from homework 8 to make and test the model.
+I want to have all possible trait combinations, so I made everything in the Hylobates genera have 1 for T1 (warning: made-up data!)
+```{r, cache = TRUE}
+require("corHMM")
+require(phytools)
+data(primates)
+primates$trait[which(grepl("Hylobates", primates$trait[,1])),2] <- 1
+```
+
+```{r, cache = TRUE}
+# trait1 = dormancy absent (0) / dormancy present (1)
+trait1 <- primates$trait[,2]
+names(trait1) <- primates$trait[,1]
+primates$tree <- nnls.tree(cophenetic(primates$tree), 
+                           primates$tree, 
+                           rooted=TRUE,
+                           trace=0)
+plotSimmap(make.simmap(primates$tree, trait1), 
+           pts = FALSE, 
+           fsize = 0.8)
+```
+```{r}
+# trait2 = competition absent (0) / competition present (1)
+trait2 <- primates$trait[,3]
+names(trait2) <- primates$trait[,1]
+plotSimmap(make.simmap(primates$tree, trait2), 
+           pts = FALSE, 
+           fsize = 0.8)
+```
+
+How do I create a likelihood function with the escape rate of dormancy (p) reducing the extinction (mu), (mu/p)?
+Maybe I'll just divide my extinction rate by the escape rate before adding to the function?
+
+
+```{r}
+bis <- make.bisse(tree = primates$tree,
+           states = trait1,
+           sampling.f = c(1,1))
+```
+bis() is now a function. Needs parameters lambda0, lambda1, mu0, mu1, q01, q10.
+lambda0 =  # speciation rate, no dormancy
+lambda1 =  # speciation rate, dormancy
+mu0 =  # extinction rate, no dormancy
+mu1 =  # extinction rate, dormancy
+q01 =  # transition rate, no -> dormancy
+q10 =  # transition rate, dormancy -> no
+
+
+
+
+
+
+
+
+
+

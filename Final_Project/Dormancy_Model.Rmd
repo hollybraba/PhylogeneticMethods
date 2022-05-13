@@ -50,26 +50,30 @@ library("ape")
 ```
 
 Use phylogeny and trait data from homework 8 to make and test the model.
-```{r, cache = TRUE}
-require("corHMM") # just like library(), but is for packages that are used within a function.
-# corHMM extimates hidden rates underlying the evolution of a binary character. It's a hidden rates model. 
-data(primates)
-ls() # lists all data and values in the environment
-print(primates)
-require(phytools)
-```
-I'm going to use the primate data used in the homework.
 I want to have all possible trait combinations, so I made everything in the Hylobates genera have 1 for T1 (warning: made-up data!)
 ```{r, cache = TRUE}
+require("corHMM")
+require(phytools)
+data(primates)
 primates$trait[which(grepl("Hylobates", primates$trait[,1])),2] <- 1
-print(primates)
 ```
 
 ```{r, cache = TRUE}
+# trait1 = dormancy absent (0) / dormancy present (1)
 trait1 <- primates$trait[,2]
 names(trait1) <- primates$trait[,1]
 primates$tree <- ape::multi2di(primates$tree)
 plotSimmap(make.simmap(primates$tree, trait1), 
+           pts = FALSE, 
+           fsize = 0.8)
+```
+
+```{r}
+# trait2 = competition absent (0) / competition present (1)
+trait2 <- primates$trait[,3]
+names(trait2) <- primates$trait[,1]
+primates$tree <- ape::multi2di(primates$tree)
+plotSimmap(make.simmap(primates$tree, trait2), 
            pts = FALSE, 
            fsize = 0.8)
 ```
@@ -94,6 +98,7 @@ allequal.dormancy.trans.rates
 ```
 Supply this transition matrix to the trans.rate= argument in hisse()
 
+Optimize the transition rates.
 ```{r, cache = TRUE}
 pp.er <- corHMM(phy = primates$tree,
                 data = primates$trait[,c(1,2)],
@@ -118,38 +123,38 @@ SR = SpeciationRate
 ER = ExtinctionRate
 
 ```{r, cache = TRUE}
-speciation.rates <- c(0.2, 0.1, 0.1, 0.2) #0A, 1A, 0B, 1B
+speciation.rates <- c(0.5, 0.1, 0.1, 0.5) #0A, 1A, 0B, 1B
 # chose higher speciation rates for:
 #   0A (no dormancy, no competition)
 #   1B (dormancy, competition)
 extinction.rates <- c(0.1, 0.1, 0.5, 0.1)
 # chose higher extinction rate for:
 #   0B (no dormancy, competition)
-transition.rates <- c(0.003772616,
-                      0.003772616,
+transition.rates <- c(0.00377253,
+                      0.00377253,
                       0, 
-                      0.003772616,
-                      0.003772616, 
-                      0.003772616, 
-                      0.003772616,
-                      0.003772616,
-                      0.003772616, 
+                      0.00377253,
+                      0.00377253, 
+                      0.00377253, 
+                      0.00377253,
+                      0.00377253,
+                      0.00377253, 
                       0,
-                      0.003772616,
-                      0.003772616)
+                      0.00377253,
+                      0.00377253)
 pars <- c(speciation.rates, extinction.rates, transition.rates)
-phy <- tree.musse(pars = pars, 
-                  max.taxa = 50, 
-                  x0 = 1, 
-                  include.extinct = FALSE) 
-# vector of pararmeters. Same order as unconstrained likelihood function returned by make.x for tree type x.
+# phy <- tree.musse(pars = pars, 
+#                   max.taxa = 50, 
+#                   x0 = 1, 
+#                   include.extinct = FALSE) I don't need to simulate a tree, I have the primate tree.
+# vector of parameters. Same order as unconstrained likelihood function returned by make.x for tree type x.
 # maximum number of taxa in tree
 # initial character state at root
 ```
 
 I need to make turnover and extinction rates for a HiSSE model. And also make the two column matrix or data frame, with the first column containing the species names and the second containing the binary character information.
 ```{r, cache = TRUE}
-turnover.anc <- c(1, 2, 3, 4)
+turnover.anc <- c(1, 2, 3, 4) # all 4 different is a true HiSSE, right?
 eps.anc <- c(1, 2, 3, 4)
 phy.dat <- data.frame(names(phy$tip.state), phy$tip.state)
 # phy.dat <- phy.dat
@@ -166,8 +171,6 @@ pp = hisse.old(phy = primates$tree,
                trans.rate = allequal.dormancy.trans.rates)
 
 ```
-!!!!!Error in UseMethod("Ntip") : no applicable method for 'Ntip' applied to an object of class "list"
-
 Or is this what I want to do instead of the previous chunk?
 
 
