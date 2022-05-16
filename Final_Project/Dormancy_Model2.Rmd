@@ -144,8 +144,40 @@ musse_fit$par
 
 
 
+```{r}
+generator <- function(p) {
+   lambda1 <- runif(1, min = 0, max = 1)
+   lambda2 <- runif(1, min = 0, max = lambda1)
+   lambda3 <- runif(1, min = 0, max = 1)
+   lambda4 <- runif(1, min = 0, max = lambda3)
+   mu1 <- runif(1, min = 0, max = 1)
+   mu2 <- runif(1, min = 0, max = 1/p)
+   mu3 <- runif(1, min = 0, max = 1)
+   mu4 <- runif(1, min = 0, max = 1/p)
+   q12 <- runif(1, min = 0, max = 1)
+   q13 <- runif(1, min = 0, max = 1)
+   q14 <- 0
+   q21 <- runif(1, min = 0, max = 1)
+   q23 <- runif(1, min = 0, max = 1)
+   q24 <- runif(1, min = 0, max = 1)
+   q31 <- runif(1, min = 0, max = 1)
+   q32 <- runif(1, min = 0, max = 1)
+   q34 <- runif(1, min = 0, max = 1)
+   q41 <- 0
+   q42 <- runif(1, min = 0, max = 1)
+   q43 <- runif(1, min = 0, max = 1)
+   
+   arguments <- c(lambda1,lambda2,lambda3,lambda4,mu1,mu2,mu3,mu4,q12,q13,q14,q21,q23,q24,q31,q32,q34,q41,q42,q43)
+   results <- musse_fn(arguments)
+   output <- list(arguments, results)
+   output
+}
+```
 
 
+```{r}
+test1 <- generator(5)
+```
 
 
 
