@@ -40,24 +40,75 @@ plotSimmap(make.simmap(primates$tree, trait2),
            fsize = 0.8)
 ```
 
-How do I create a likelihood function with the escape rate of dormancy (p) reducing the extinction (mu), (mu/p)?
-Maybe I'll just divide my extinction rate by the escape rate before adding to the function?
+Make a BiSSE function using make.bisse. Use this function to test all the different hypotheses of speciation, extinction, and transition rates.
+```{r}
+bis <- make.bisse(tree = primates$tree,
+                  states = trait1,
+                  sampling.f = c(1,1))
+```
+bis() is now a function. Needs parameters lambda0, lambda1, mu0, mu1, q01, q10.
+
+Competition is an environmental variable, not an evolved trait. I will run BiSSE with competition as a variable that influences how parameters are input.
+SpN = lambda0 =  # speciation rate, no dormancy
+SpD = lambda1 =  # speciation rate, dormancy (/p)
+ExN = mu0 =      # extinction rate, no dormancy
+ExD = mu1 =      # extinction rate, dormancy (/p)
+TrN = q01 =      # transition rate, no -> dormancy
+TrD = q10 =      # transition rate, dormancy -> no
+p   =            # escape rate
+
+The results are in log-likelihood, so use exp() to make comparisons easier. The most positive likelihood is best.
+For example: exp(bis(c(1,2,3,1,2,3)))
+
+```{r}
+ dormancy_lik <- function(param, bisse_fn) {
+ lambda0 <- params$popsize0+4
+ mu0 <- params$extinction_dormrancy + 0.15 * params$extinction_nndormand
+ q01 <- params$dormancy_escape_rate / params$N
+ return(-bisse_fn(c(lambda0,..)))
+}
+ fit_model <- function(bisse_fn) {
+ starting_guesses <- c(3, 1, 2)
+ return(optim(starting_guesses, dormancy_lik, bisse_fn=bisse_fn))
+}
+```
+
+SpN = lambda0 =  # speciation rate, no dormancy
+SpD = lambda1 =  # speciation rate, dormancy (/p)
+ExN = mu0 =      # extinction rate, no dormancy
+ExD = mu1 =      # extinction rate, dormancy (/p)
+TrN = q01 =      # transition rate, no -> dormancy
+TrD = q10 =      # transition rate, dormancy -> no
+p   =            # escape rate
+
+First, optimize rates without competition or dormancy. Then use Trait2 to divide the speciation and extinction rates and re-optimize the rates. 
+```{r}
+parameters <- list(c(1,1,1,1,1,1), 
+                   c(.5, .5, .5, .5, .5, .5))
+
+for (i in parameters) {
+  print(exp(bis(i)))
+}
+```
+
+
+
+
+
+
+
+
+
+
 
 
 ```{r}
-bis <- make.bisse(tree = primates$tree,
-           states = trait1,
-           sampling.f = c(1,1))
+make.musse(tree = primates$tree,
+           states = primates$trait,
+           k = 4,
+           sampling.f = c(1,1),
+           )
 ```
-bis() is now a function. Needs parameters lambda0, lambda1, mu0, mu1, q01, q10.
-lambda0 =  # speciation rate, no dormancy
-lambda1 =  # speciation rate, dormancy
-mu0 =  # extinction rate, no dormancy
-mu1 =  # extinction rate, dormancy
-q01 =  # transition rate, no -> dormancy
-q10 =  # transition rate, dormancy -> no
-
-
 
 
 
