@@ -8,6 +8,7 @@ Using diversitree packages...
 library("diversitree")
 library("ape")
 library("phangorn")
+library("dplyr")
 ```
 
 Use phylogeny and trait data from homework 8 to make and test the model.
@@ -17,6 +18,11 @@ require("corHMM")
 require(phytools)
 data(primates)
 primates$trait[which(grepl("Hylobates", primates$trait[,1])),2] <- 1
+```
+
+Tree isn't bifurcating, use multi2di to make the tree bifurcating.
+```{r}
+primates$tree <- multi2di(primates$tree)
 ```
 
 ```{r, cache = TRUE}
@@ -48,7 +54,6 @@ bis <- make.bisse(tree = primates$tree,
 ```
 bis() is now a function. Needs parameters lambda0, lambda1, mu0, mu1, q01, q10.
 
-Competition is an environmental variable, not an evolved trait. I will run BiSSE with competition as a variable that influences how parameters are input.
 SpN = lambda0 =  # speciation rate, no dormancy
 SpD = lambda1 =  # speciation rate, dormancy (/p)
 ExN = mu0 =      # extinction rate, no dormancy
@@ -60,6 +65,18 @@ p   =            # escape rate
 The results are in log-likelihood, so use exp() to make comparisons easier. The most positive likelihood is best.
 For example: exp(bis(c(1,2,3,1,2,3)))
 
+```{r}
+startparambisse <- starting.point.bisse(tree = primates$tree)
+```
+   lambda0    lambda1        mu0        mu1        q01        q10 
+0.06882283 0.06882283 0.00000000 0.00000000 0.01376457 0.01376457 
+```{r}
+bis_fit <- find.mle(bis, startparambisse)
+bis_fit
+```
+
+
+Optimize the likelihoods:
 ```{r}
  dormancy_lik <- function(param, bisse_fn) {
  lambda0 <- params$popsize0+4
@@ -81,34 +98,53 @@ TrN = q01 =      # transition rate, no -> dormancy
 TrD = q10 =      # transition rate, dormancy -> no
 p   =            # escape rate
 
-First, optimize rates without competition or dormancy. Then use Trait2 to divide the speciation and extinction rates and re-optimize the rates. 
-```{r}
-parameters <- list(c(1,1,1,1,1,1), 
-                   c(.5, .5, .5, .5, .5, .5))
+Now that BiSSE is working, I want to run MuSSE with multiple states (dormancy-0,1, and competition-A,B)
 
-for (i in parameters) {
-  print(exp(bis(i)))
-}
+Need to first make a trait that has 0-3 representing 0A, 1A, 0B, 1B.
+```{r}
+primates$trait <- primates$trait %>% mutate(T3 = case_when(T1 == 0 & T2 == 0 ~ "1",
+                                                           T1 == 1 & T2 == 0 ~ "2",
+                                                           T1 == 0 & T2 == 1 ~ "3",
+                                                           T1 == 1 & T2 == 1 ~ "4")) %>%
+   mutate_at(.vars = vars(T3), .funs = as.numeric) 
+
+trait3 <- primates$trait[,4]
+names(trait3) <- primates$trait[,1]
+# 1   2   3   4
+# 0A, 1A, 0B, 1B
+```
+
+```{r}
+make.musse.multitrait(tree = primates$tree,
+                      states = trait3,
+                      sampling.f = c(1,1),
+                      allow.multistep = TRUE,
+                      control=list())
+musse_fn <- make.musse(tree = primates$tree,
+            states = trait3,
+            k = 4,
+            sampling.f = c(1,1,1,1)
+            )
+```
+
+```{r}
+startingparammusse <- starting.point.musse(tree = primates$tree, k = 4)
+```
+
+```{r}
+musse_fit <- find.mle(musse_fn, startingparammusse)
+musse_fit
+```
+
+
+```{r}
+musse_fit$par
 ```
 
 
 
 
 
-
-
-
-
-
-
-
-```{r}
-make.musse(tree = primates$tree,
-           states = primates$trait,
-           k = 4,
-           sampling.f = c(1,1),
-           )
-```
 
 
 
