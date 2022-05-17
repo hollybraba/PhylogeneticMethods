@@ -1,11 +1,14 @@
 ---
 title: "Final Project"
-output: html_notebook
+output:
+  html_document:
+    df_print: paged
 ---
 
 Using diversitree packages...
 ```{r}
 library("diversitree")
+library("phytools")
 library("ape")
 library("phangorn")
 library("tidyverse")
@@ -115,11 +118,11 @@ names(trait3) <- primates$trait[,1]
 ```
 
 ```{r}
-make.musse.multitrait(tree = primates$tree,
-                      states = trait3,
-                      sampling.f = c(1,1),
-                      allow.multistep = TRUE,
-                      control=list())
+# make.musse.multitrait(tree = primates$tree,
+#                       states = trait3,
+#                       sampling.f = c(1,1),
+#                       allow.multistep = TRUE,
+#                       control=list())
 musse_fn <- make.musse(tree = primates$tree,
             states = trait3,
             k = 4,
@@ -146,30 +149,31 @@ musse_fit$par
 Make a function that creates all 20 parameters as random numbers based on dormancy rules.
 ```{r}
 generator <- function(p) {
-   lambda1 <- runif(1, min = 0, max = 1)
+   lambda1 <- runif(1, min = 0, max = .1)
    lambda2 <- runif(1, min = 0, max = lambda1)
-   lambda3 <- runif(1, min = 0, max = 1)
+   lambda3 <- runif(1, min = 0, max = .1)
    lambda4 <- runif(1, min = 0, max = lambda3)
-   mu1 <- runif(1, min = 0, max = 1)
-   mu2 <- runif(1, min = 0, max = 1/p)
-   mu3 <- runif(1, min = 0, max = 1)
-   mu4 <- runif(1, min = 0, max = 1/p)
-   q12 <- runif(1, min = 0, max = 1)
-   q13 <- runif(1, min = 0, max = 1)
+   mu1 <- runif(1, min = 0, max = .1)
+   mu2 <- runif(1, min = 0, max = .1/p)
+   mu3 <- runif(1, min = 0, max = .1)
+   mu4 <- runif(1, min = 0, max = .1/p)
+   q12 <- runif(1, min = 0, max = .1)
+   q13 <- runif(1, min = 0, max = .1)
    q14 <- 0
-   q21 <- runif(1, min = 0, max = 1)
-   q23 <- runif(1, min = 0, max = 1)
-   q24 <- runif(1, min = 0, max = 1)
-   q31 <- runif(1, min = 0, max = 1)
-   q32 <- runif(1, min = 0, max = 1)
-   q34 <- runif(1, min = 0, max = 1)
+   q21 <- runif(1, min = 0, max = .1)
+   q23 <- runif(1, min = 0, max = .1)
+   q24 <- runif(1, min = 0, max = .1)
+   q31 <- runif(1, min = 0, max = .1)
+   q32 <- runif(1, min = 0, max = .1)
+   q34 <- runif(1, min = 0, max = .1)
    q41 <- 0
-   q42 <- runif(1, min = 0, max = 1)
-   q43 <- runif(1, min = 0, max = 1)
+   q42 <- runif(1, min = 0, max = .1)
+   q43 <- runif(1, min = 0, max = .1)
    
    arguments <- c(lambda1,lambda2,lambda3,lambda4,mu1,mu2,mu3,mu4,q12,q13,q14,q21,q23,q24,q31,q32,q34,q41,q42,q43)
    results <- musse_fn(arguments)
-   output <- data.frame(lambda1=lambda1,
+   output <- data.frame(p=p,
+                        lambda1=lambda1,
                         lambda2=lambda2,
                         lambda3=lambda3,
                         lambda4=lambda4,
@@ -198,11 +202,19 @@ Run the above function multiple times.
 ```{r}
 test1 <- generator(p = 5) 
 # rep(p, repetitions)
-res <- map_dfr(.x = rep(5, 1000), .f = ~generator(p = .x))
+res <- map_dfr(.x = rep(seq(from = 1, to = 10, by = 0.1), 1000), .f = ~generator(p = .x))
 
 ```
 
+Plot p (escape rate) vs. log.likelihood.
+```{r}
+# plot(res$p, res$log_likelihood)
 
+ggplot(res, aes(x = p, 
+                y = log_likelihood,
+                color = p)) +
+   geom_point(alpha = 0.2)
+```
 
 
 
