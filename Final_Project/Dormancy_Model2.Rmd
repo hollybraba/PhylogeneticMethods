@@ -82,9 +82,9 @@ bis_fit
 Optimize the likelihoods:
 ```{r}
  dormancy_lik <- function(param, bisse_fn) {
- lambda0 <- params$popsize0+4
- mu0 <- params$extinction_dormrancy + 0.15 * params$extinction_nndormand
- q01 <- params$dormancy_escape_rate / params$N
+ lambda0 <- params['popsize0+4
+ mu0 <- params['extinction_dormrancy + 0.15 * params['extinction_nndormand
+ q01 <- params['dormancy_escape_rate / params['N
  return(-bisse_fn(c(lambda0,..)))
 }
  fit_model <- function(bisse_fn) {
@@ -146,17 +146,129 @@ musse_fit$par
 
 
 
+Make a function that estimates and optimizes the parameters to the best likelihood.
+```{r}
+estimator <- function(params, musse_fn, BADVAL=1e6, return_negloglike=TRUE) {
+   if(!return_negloglike) {
+      BADVAL <- -1 * BADVAL
+   }
+   p <- params['p']
+   if(p<1) {
+      return(BADVAL)
+   }
+   lambda1 <- params['lambda1']
+   lambda2 <- params['lambda2']
+   lambda3 <- params['lambda3']
+   lambda4 <- params['lambda4']
+   if(lambda2>lambda1) {
+      return(BADVAL)
+   }
+   if(lambda4>lambda3) {
+      return(BADVAL)
+   }   
+   mu1 <- params['mu1']
+   mu2 <- mu1/p
+   mu3 <- params['mu3']
+   mu4 <- mu3/p
+   q12 <- params['q12']
+   q13 <- params['q13']
+   q14 <- 0
+   q21 <- params['q21']
+   q23 <- params['q23']
+   q24 <- params['q24']
+   q31 <- params['q31']
+   q32 <- params['q32']
+   q34 <- params['q34']
+   q41 <- 0
+   q42 <- params['q42']
+   q43 <- params['q43']
+   
+   arguments <- c(lambda1,lambda2,lambda3,lambda4,mu1,mu2,mu3,mu4,q12,q13,q14,q21,q23,q24,q31,q32,q34,q41,q42,q43)
+   if(any(arguments<0)) {
+      return(BADVAL)
+   }
+   results <- ifelse(return_negloglike, 1, -1)*musse_fn(arguments) # negative log likelihood, so smaller is better
+   print(c(arguments, results))
+   results
+}
+```
+
+Starting parameters for optimization.
+```{r}
+params_start <- c(p=1, 
+                  lambda1=0.1, 
+                  lambda2=0.1, 
+                  lambda3=0.1, 
+                  lambda4=0.1,
+                  mu1=0.05, 
+                  mu3=0.05, 
+                  q12=0.001, 
+                  q13=0.001, 
+                  q21=0.001, 
+                  q23=0.001, 
+                  q24=0.001, 
+                  q31=0.001, 
+                  q32=0.001, 
+                  q34=0.001, 
+                  q42=0.001, 
+                  q43=0.001)
+```
+
+Use the starting parameters in optim() to find the best parameters.
+```{r}
+best_fit <- optim(par=params_start, fn=estimator, musse_fn=musse_fn)
+best_fit
+```
+
+
+
+Use MCMC to find the distribution of likelihoods. Use the optimized parameters to hopefully start in a better place.
+Start by making the output file.
+```{r}
+file.create("/Users/hollybrabazon/Documents/PhD_UTK_EPP/Course_work/EEB587_PhylogeneticMethods/PhylogeneticMethods/Final_Project/MCMC_output_p>1.csv")
+```
+
+Then use mcmc().
+```{r}
+mcmc_resuts <- diversitree::mcmc(lik = estimator, 
+                                 x.init = best_fit$par, 
+                                 nsteps = 100, 
+                                 w = 1, 
+                                 musse_fn = musse_fn, 
+                                 return_negloglike = FALSE,
+                                 print.every = 10,
+                                 save.file = "/Users/hollybrabazon/Documents/PhD_UTK_EPP/Course_work/EEB587_PhylogeneticMethods/PhylogeneticMethods/Final_Project/MCMC_output_p>1.csv",
+                                 save.every = 10)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 Make a function that creates all 20 parameters as random numbers based on dormancy rules.
 ```{r}
-generator <- function(p) {
+generator <- function(p, musse_fn) {
    lambda1 <- runif(1, min = 0, max = .1)
    lambda2 <- runif(1, min = 0, max = lambda1)
    lambda3 <- runif(1, min = 0, max = .1)
    lambda4 <- runif(1, min = 0, max = lambda3)
    mu1 <- runif(1, min = 0, max = .1)
-   mu2 <- runif(1, min = 0, max = .1/p)
+   mu2 <- mu1/p
    mu3 <- runif(1, min = 0, max = .1)
-   mu4 <- runif(1, min = 0, max = .1/p)
+   mu4 <- mu3/p
    q12 <- runif(1, min = 0, max = .1)
    q13 <- runif(1, min = 0, max = .1)
    q14 <- 0
@@ -200,9 +312,9 @@ generator <- function(p) {
 
 Run the above function multiple times.
 ```{r}
-test1 <- generator(p = 5) 
+test1 <- generator(p = 5, musse_fn = musse_fn) 
 # rep(p, repetitions)
-res <- map_dfr(.x = rep(seq(from = 1, to = 10, by = 0.1), 1000), .f = ~generator(p = .x))
+res <- map_dfr(.x = rep(seq(from = 1, to = 10, by = 0.2), 10), .f = ~generator(p = .x, musse_fn = musse_fn))
 
 ```
 
