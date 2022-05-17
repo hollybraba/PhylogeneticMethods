@@ -8,7 +8,7 @@ Using diversitree packages...
 library("diversitree")
 library("ape")
 library("phangorn")
-library("dplyr")
+library("tidyverse")
 ```
 
 Use phylogeny and trait data from homework 8 to make and test the model.
@@ -143,7 +143,7 @@ musse_fit$par
 
 
 
-
+Make a function that creates all 20 parameters as random numbers based on dormancy rules.
 ```{r}
 generator <- function(p) {
    lambda1 <- runif(1, min = 0, max = 1)
@@ -169,14 +169,37 @@ generator <- function(p) {
    
    arguments <- c(lambda1,lambda2,lambda3,lambda4,mu1,mu2,mu3,mu4,q12,q13,q14,q21,q23,q24,q31,q32,q34,q41,q42,q43)
    results <- musse_fn(arguments)
-   output <- list(arguments, results)
+   output <- data.frame(lambda1=lambda1,
+                        lambda2=lambda2,
+                        lambda3=lambda3,
+                        lambda4=lambda4,
+                        mu1=mu1,
+                        mu2=mu2,
+                        mu3=mu3,
+                        mu4=mu4,
+                        q12=q12,
+                        q13=q13,
+                        q14=q14,
+                        q21=q21,
+                        q23=q23,
+                        q24=q24,
+                        q31=q31,
+                        q32=q32,
+                        q34=q34,
+                        q41=q41,
+                        q42=q42,
+                        q43=q43,
+                        log_likelihood = results)
    output
 }
 ```
 
-
+Run the above function multiple times.
 ```{r}
-test1 <- generator(5)
+test1 <- generator(p = 5) 
+# rep(p, repetitions)
+res <- map_dfr(.x = rep(5, 1000), .f = ~generator(p = .x))
+
 ```
 
 
