@@ -1,12 +1,27 @@
 ---
-title: "Final Project"
-output:
-  html_document:
-    df_print: paged
+title: "DormanSSE: estimating the effect of dormancy on speciation and extinction rates."
+author: Holly Brabazon
+date: May 18, 2022
+output: 
+   html_document:
+      toc: TRUE
+      toc_depth: 2
 ---
+# Introduction
+The effect of dormancy is often ignored when it comes to investigating speciation and extinction rates. However, dormancy may be impacting population sizes and growth rates in important ways that influence the evolution of species and the diversity we see in phylogenies. The interplay of dormancy in response to competition raises the question: how much does dormancy effect speciation and extinction in the presence or absence of competition? According to Lennon et al. (2021), species that engage in dormancy may have a lower extinction rate because individuals are able to escape into the "seed bank" during times of high competition. On the other hand, escaping into the "seed bank" with dormancy reduces the effective population size of reproductive individuals, thereby limiting the population growth rate. If dormancy is considered an evolved trait, how does it effect speciation and extinction rates in the presence or absence of competition?  
+  
+I will use MuSSE (FitzJohn 2012) to test for optimal parameters for speciation and extinction rates in lineages that are or are not capable of dormancy and have or have no competition present. In addition, the rate of escape into the "seed bank" will be optimized for the phylogeny presented. Although this example only uses example data, the concept could be applied to a phylogeny with varying life history strategies and levels of competition. After optimizing MuSSE, it would be wise to consider hidden traits that may be influencing the speciation and extinction rates using HiSSE (Beaulieu & O'Meara 2016).
 
-Using diversitree packages...
-```{r}
+
+
+
+
+
+
+
+
+# Load packages
+```{r message=FALSE, warning=FALSE}
 library("diversitree")
 library("phytools")
 library("ape")
@@ -14,33 +29,47 @@ library("phangorn")
 library("tidyverse")
 ```
 
-Use phylogeny and trait data from homework 8 to make and test the model.
-I want to have all possible trait combinations, so I made everything in the Hylobates genera have 1 for T1 (warning: made-up data!)
-```{r, cache = TRUE}
+# Import data
+I will be using phylogeny and trait data from homework 8 to make and test the model.
+I want to have all possible trait combinations, so everything in the _Hylobates_ genus has 1 for T1 (warning: this is now made-up data!).
+```{r include=TRUE, message=FALSE, warning=FALSE}
 require("corHMM")
 require(phytools)
 data(primates)
 primates$trait[which(grepl("Hylobates", primates$trait[,1])),2] <- 1
 ```
-
-Tree isn't bifurcating, use multi2di to make the tree bifurcating.
-```{r}
+Look at the trait data to see all possible combinations.
+```{r include=TRUE, message=FALSE, warning=FALSE}
+head(primates$trait, 20)
+```
+## Make the tree bifurcating
+MuSSE complained that the tree wasn't bifurcating, use multi2di to make the tree bifurcating.
+```{r include=TRUE}
 primates$tree <- multi2di(primates$tree)
 ```
-
-```{r, cache = TRUE}
-# trait1 = dormancy absent (0) / dormancy present (1)
-trait1 <- primates$trait[,2]
-names(trait1) <- primates$trait[,1]
+## Make the tree ultrametric
+The branches need to all end at the same place for BiSSE to work.
+```{r include=TRUE}
 primates$tree <- nnls.tree(cophenetic(primates$tree), 
                            primates$tree, 
                            rooted=TRUE,
                            trace=0)
+```
+# Look at the traits in relation to the phylogeny
+## Trait 1 (dormancy)
+Look at trait 1 (dormancy) on the tree using Simmap.
+```{r include = TRUE, fig.cap="Dormancy mapped on the phylogeny.  Red = has dormancy, black = no dormancy"}
+# trait1 = dormancy absent (0) / dormancy present (1)
+trait1 <- primates$trait[,2]
+names(trait1) <- primates$trait[,1]
 plotSimmap(make.simmap(primates$tree, trait1), 
            pts = FALSE, 
            fsize = 0.8)
 ```
-```{r}
+
+## Trait 2 (competition)
+Look at trait 2 (competition) on the tree.
+```{r include = TRUE, fig.cap="Competition mapped on the phylogeny. Red = has competition, black = no competition."}
 # trait2 = competition absent (0) / competition present (1)
 trait2 <- primates$trait[,3]
 names(trait2) <- primates$trait[,1]
@@ -49,101 +78,108 @@ plotSimmap(make.simmap(primates$tree, trait2),
            fsize = 0.8)
 ```
 
-Make a BiSSE function using make.bisse. Use this function to test all the different hypotheses of speciation, extinction, and transition rates.
-```{r}
-bis <- make.bisse(tree = primates$tree,
+# BiSSE
+I started small with a simple BiSSE on trait 1 to make sure things were working and make sure I knew what the imputs for the functions were (Maddison et al. 2007).  
+## Trait 1 BiSSE
+Make a BiSSE function using make.bisse(). Use this function to test all the different hypotheses of speciation, extinction, and transition rates.  
+```{r include = TRUE}
+bis <<- make.bisse(tree = primates$tree,
                   states = trait1,
                   sampling.f = c(1,1))
 ```
-bis() is now a function. Needs parameters lambda0, lambda1, mu0, mu1, q01, q10.
-
-SpN = lambda0 =  # speciation rate, no dormancy
-SpD = lambda1 =  # speciation rate, dormancy (/p)
-ExN = mu0 =      # extinction rate, no dormancy
-ExD = mu1 =      # extinction rate, dormancy (/p)
-TrN = q01 =      # transition rate, no -> dormancy
-TrD = q10 =      # transition rate, dormancy -> no
-p   =            # escape rate
-
+bis() is now a function. Needs parameters lambda0, lambda1, mu0, mu1, q01, q10.  
+  
+p =        # escape rate  
+lambda0 =  # speciation rate, no dormancy  
+lambda1 =  # speciation rate, dormancy (/p)  
+mu0 =      # extinction rate, no dormancy  
+mu1 =      # extinction rate, dormancy (/p)  
+q01 =      # transition rate, no -> dormancy  
+q10 =      # transition rate, dormancy -> no  
+  
 The results are in log-likelihood, so use exp() to make comparisons easier. The most positive likelihood is best.
-For example: exp(bis(c(1,2,3,1,2,3)))
+For example: 
+```{r include = TRUE}
+exp(bis(c(1,2,3,1,2,3)))
+```
 
+## Starting BiSSE parameters
+Use starting.point.bisse() to find the best starting parameters to run BiSSE.
 ```{r}
 startparambisse <- starting.point.bisse(tree = primates$tree)
+startparambisse
 ```
-   lambda0    lambda1        mu0        mu1        q01        q10 
-0.06882283 0.06882283 0.00000000 0.00000000 0.01376457 0.01376457 
+
+## Find the optimal BiSSE parameters
+Find the parameters with the highest likelihood for explaining the phylogeny.  
+Use find.mle() to optimize the parameters for the BiSSE function.  
 ```{r}
 bis_fit <- find.mle(bis, startparambisse)
 bis_fit
 ```
 
-
-Optimize the likelihoods:
-```{r}
- dormancy_lik <- function(param, bisse_fn) {
- lambda0 <- params['popsize0+4
- mu0 <- params['extinction_dormrancy + 0.15 * params['extinction_nndormand
- q01 <- params['dormancy_escape_rate / params['N
- return(-bisse_fn(c(lambda0,..)))
-}
- fit_model <- function(bisse_fn) {
- starting_guesses <- c(3, 1, 2)
- return(optim(starting_guesses, dormancy_lik, bisse_fn=bisse_fn))
-}
-```
-
-SpN = lambda0 =  # speciation rate, no dormancy
-SpD = lambda1 =  # speciation rate, dormancy (/p)
-ExN = mu0 =      # extinction rate, no dormancy
-ExD = mu1 =      # extinction rate, dormancy (/p)
-TrN = q01 =      # transition rate, no -> dormancy
-TrD = q10 =      # transition rate, dormancy -> no
-p   =            # escape rate
+SpN = lambda0 =  # speciation rate, no dormancy  
+SpD = lambda1 =  # speciation rate, dormancy (/p)  
+ExN = mu0 =      # extinction rate, no dormancy  
+ExD = mu1 =      # extinction rate, dormancy (/p)  
+TrN = q01 =      # transition rate, no -> dormancy  
+TrD = q10 =      # transition rate, dormancy -> no  
+p   =            # escape rate  
 
 Now that BiSSE is working, I want to run MuSSE with multiple states (dormancy-0,1, and competition-A,B)
 
-Need to first make a trait that has 0-3 representing 0A, 1A, 0B, 1B.
+# MuSSE
+## Make a trait that represents both trait 1 and 2
+Need to first make a trait that has 1-4 representing 0A, 1A, 0B, 1B. O/1 is for no dormancy/dormancy, A/B is for no competition/competition.  
 ```{r}
 primates$trait <- primates$trait %>% mutate(T3 = case_when(T1 == 0 & T2 == 0 ~ "1",
                                                            T1 == 1 & T2 == 0 ~ "2",
                                                            T1 == 0 & T2 == 1 ~ "3",
                                                            T1 == 1 & T2 == 1 ~ "4")) %>%
    mutate_at(.vars = vars(T3), .funs = as.numeric) 
+# mutate works with character data, but I'll need numeric going forward.
 
 trait3 <- primates$trait[,4]
 names(trait3) <- primates$trait[,1]
 # 1   2   3   4
 # 0A, 1A, 0B, 1B
 ```
+Look at the trait data to see all possible combinations.
+```{r include=TRUE, message=FALSE, warning=FALSE}
+head(primates$trait, 20)
+```
 
+## Make the MuSSE function using make.musse()
 ```{r}
-musse_fn <- make.musse(tree = primates$tree,
+musse_fn <<- make.musse(tree = primates$tree,
             states = trait3,
             k = 4,
             sampling.f = c(1,1,1,1)
             )
 ```
 
+## Find starting parameters for MuSSE
 ```{r}
 startingparammusse <- starting.point.musse(tree = primates$tree, k = 4)
 ```
 
+## Use the starting parameters to find optimal parameters for MuSSE
 ```{r}
 musse_fit <- find.mle(musse_fn, startingparammusse)
 musse_fit
 ```
-
-
+These are the optimal parameters for the MuSSE
 ```{r}
 musse_fit$par
 ```
 
-
-
-Make a function that estimates and optimizes the parameters to the best likelihood.
+## Make a function to constrain parameters to account for dormancy
+Lambda 2 and 4 are the speciation rate for lineages with dormancy. Because these taxa escape into the seed bank and reduce the effective population size, the speciation rate for lamba 2 and 4 will always be smaller than for lambda 1 and 3.  
+Mu 2 and 4 are the extinction rate for lineages with dormancy. Because these taxa escape into the seed bank and can avoid competition, the extinction rate for mu 1 and 2 will be reduced by the escape rate (p).  
+Dual transitions are kept for two of the possibilities, but are not possible for the other two possibilities. A species can gain dormancy and lose competition in one step or lose dormancy and gain competition in one step. A species most likely wouldn't gain dormancy and gain competition or lose dormancy and lose competition in one step. That is why q14 and q41 are constrained to 0.  
+BADVAL is used to return a bad likelihood score if the optimization function wanders into a space that contradicts the above statemnts.  
 ```{r}
-estimator <- function(params, musse_fn, BADVAL=1e6, return_negloglike=TRUE) {
+estimator <<- function(params, musse_fn, BADVAL=1e6, return_negloglike=TRUE) {
    if(!return_negloglike) {
       BADVAL <- -1 * BADVAL
    }
@@ -188,9 +224,10 @@ estimator <- function(params, musse_fn, BADVAL=1e6, return_negloglike=TRUE) {
 }
 ```
 
-Starting parameters for optimization.
+## Starting parameters for optimization.
+p always has to be greater than 1. If p drops below 1, the extinction rate actually increases for species with dormancy. 
 ```{r}
-params_start <- c(p=1, 
+params_start <<- c(p=1, 
                   lambda1=0.1, 
                   lambda2=0.1, 
                   lambda3=0.1, 
@@ -209,121 +246,83 @@ params_start <- c(p=1,
                   q43=0.001)
 ```
 
-Use the starting parameters in optim() to find the best parameters.
-```{r}
+## Optimizing parameters  
+Use the starting parameters in optim() to find the best parameters to explain the distribution of traits 1 and 2 on the tree if speciation and extinction rates are considered.
+```{r, message=FALSE, warning=FALSE, results='hide'}
 best_fit <- optim(par=params_start, fn=estimator, musse_fn=musse_fn)
-best_fit
 ```
 
+```{r, message=FALSE, warning=FALSE}
+best_fit$par
+```
 
+## Plot the two traits combined onto a phylogeny
+Look at trait 3 (how competition and dormancy interact) on the tree.
+```{r include = TRUE, fig.cap="Both traits mapped onto a phylogeny. Red = no competition/has dormancy, black = no competition/no dormancy, green = has competition/no dormancy, blue = has competition/has dormancy."}
+# trait2 = competition absent (0) / competition present (1)
+trait3 <- primates$trait[,4]
+names(trait3) <- primates$trait[,1]
+plotSimmap(make.simmap(primates$tree, trait3), 
+           pts = FALSE, 
+           fsize = 0.8)
+```
+# Conclusion
+## Diversification rates
+Looking at the final, optimized parameters, the extinction rates (mu) are smaller than the speciation rates (lambda). Because the escape rate (p) is so close to 1 (1.002689), it doesn't result in a large change in the extinction rate because of dormancy. Transition rates have some variability with the transition from dormancy/competition, to dormancy/no competition having the highest likelihood. The transition from no dormancy/competition to dormancy/competition has the lowest likelihood. 
 
-Use MCMC to find the distribution of likelihoods. Use the optimized parameters to hopefully start in a better place.
-Start by making the output file.
+```{r, fig.cap="Bubble diagram of transition rates."}
+knitr::include_graphics("/Users/hollybrabazon/Documents/PhD_UTK_EPP/Course_work/EEB587_PhylogeneticMethods/PhylogeneticMethods/Final_Project/bubblediagram.pdf")
+```
+If the bubble diagram fails to display correctly, please download the pdf below.
+```{r, fig.cap="Bubble diagram of transition rates."}
+xfun::embed_file("/Users/hollybrabazon/Documents/PhD_UTK_EPP/Course_work/EEB587_PhylogeneticMethods/PhylogeneticMethods/Final_Project/bubblediagram.pdf")
+```
+
+## Potential improvements
+Improvements to this method are necessary to best capture the effect of dormancy and competition on divergence rates.  
+* The equation I based some of the parameter constraints on is from Lennon et al. (2021). For a species not capable of dormancy they say that:  
+equilibrium abundance = (reproductive rate - death rate)  
+For a species capable of dormancy they say that:  
+equilibrium abundance = (reproductive rate - death rate) / (1 - escape rate)  
+I simplified these equations poorly so that the escape rate simply divided the extinction rate and made it smaller. It would be better to work the escape rate better into the extinction rate that more accurately represents biology.  
+* In this model I assumed that competition evolves on a tree like an inherited trait. Although competition might follow this pattern in some lineages, it might not be modeled best this way. Especially when considering invasion events. Taxa may experience competition or no competition with no regard to ancestral states for that trait.  
+* Being able to successfully run an MCMC would determine if the optimized parameters are good at explaining the data or not. I included the code I was using to try and run an MCMC, but when I constrained the escape rate to be over 1, it stopped producing output to the specified .csv file. I stopped running the MCMC and will just report the optimized parameters.  
+* It would be interesting to run a model such as this on a phylogeny that contains real examples of species that are capable of dormancy and species that aren't capable of dormancy.   
+* It seems difficult to measure competition in real-world situations, and I would assume competition is ubiquitous for every species in the world. Using HiSSE (Beaulieu & O'Meara 2016) to capture hidden diversification shifts would better model the diversity of species in a phylogeny. 
+
+# MCMC
+## MCMC to determine the likelihood distribution over the possible parameter space. 
+Use MCMC to find the distribution of likelihoods. Use the optimized parameters to hopefully start in a better place.  
+Start by making the output file to save the steps.
 ```{r}
-file.create("/Users/hollybrabazon/Documents/PhD_UTK_EPP/Course_work/EEB587_PhylogeneticMethods/PhylogeneticMethods/Final_Project/MCMC_output_pgreaterthan1.csv")
+# file.create("/Users/hollybrabazon/Documents/PhD_UTK_EPP/Course_work/EEB587_PhylogeneticMethods/PhylogeneticMethods/Final_Project/MCMC_output_pgreaterthan1.csv")
 ```
 
-Then use mcmc().
+Then use mcmc() to walk through the parameter space.  
+_This mcmc would start running, but never get to a point where it would write out steps in the .csv file, even after many hours._
 ```{r}
-mcmc_resuts <- diversitree::mcmc(lik = estimator, 
-                                 x.init = best_fit$par, 
-                                 nsteps = 100, 
-                                 w = 1, 
-                                 musse_fn = musse_fn, 
-                                 return_negloglike = FALSE,
-                                 print.every = 100,
-                                 save.file = "/Users/hollybrabazon/Documents/PhD_UTK_EPP/Course_work/EEB587_PhylogeneticMethods/PhylogeneticMethods/Final_Project/MCMC_output_pgreaterthan1.csv",
-                                 save.every = 1)
+# mcmc_resuts <- diversitree::mcmc(lik = estimator,
+#                                  x.init = best_fit$par,
+#                                  nsteps = 100,
+#                                  w = 0.1,
+#                                  musse_fn = musse_fn,
+#                                  return_negloglike = FALSE,
+#                                  print.every = 100,
+#                                  save.file = "/Users/hollybrabazon/Documents/PhD_UTK_EPP/Course_work/EEB587_PhylogeneticMethods/PhylogeneticMethods/Final_Project/MCMC_output_pgreaterthan1.csv",
+#                                  save.every = 1)
 ```
 
 
 
 
+# References:
+Beaulieu, J.M. and O’Meara, B.C. (2016) Detecting hidden diversification shifts in models of trait-dependent speciation and extinction. Systematic Biology, 65, 583–601.  
 
+FitzJohn, R.G. (2012) Diversitree: comparative phylogenetic analyses of diversification in R: Diversitree. Methods Ecol Evol, 3, 1084–1092.  
 
+Lennon, J.T., den Hollander, F., Wilke-Berenguer, M., and Blath, J. (2021) Principles of seed banks and the emergence of complexity from dormancy. Nature Communications, 12.  
 
-
-
-
-
-
-
-
-
-
-
-
-Make a function that creates all 20 parameters as random numbers based on dormancy rules.
-```{r}
-generator <- function(p, musse_fn) {
-   lambda1 <- runif(1, min = 0, max = .1)
-   lambda2 <- runif(1, min = 0, max = lambda1)
-   lambda3 <- runif(1, min = 0, max = .1)
-   lambda4 <- runif(1, min = 0, max = lambda3)
-   mu1 <- runif(1, min = 0, max = .1)
-   mu2 <- mu1/p
-   mu3 <- runif(1, min = 0, max = .1)
-   mu4 <- mu3/p
-   q12 <- runif(1, min = 0, max = .1)
-   q13 <- runif(1, min = 0, max = .1)
-   q14 <- 0
-   q21 <- runif(1, min = 0, max = .1)
-   q23 <- runif(1, min = 0, max = .1)
-   q24 <- runif(1, min = 0, max = .1)
-   q31 <- runif(1, min = 0, max = .1)
-   q32 <- runif(1, min = 0, max = .1)
-   q34 <- runif(1, min = 0, max = .1)
-   q41 <- 0
-   q42 <- runif(1, min = 0, max = .1)
-   q43 <- runif(1, min = 0, max = .1)
-   
-   arguments <- c(lambda1,lambda2,lambda3,lambda4,mu1,mu2,mu3,mu4,q12,q13,q14,q21,q23,q24,q31,q32,q34,q41,q42,q43)
-   results <- musse_fn(arguments)
-   output <- data.frame(p=p,
-                        lambda1=lambda1,
-                        lambda2=lambda2,
-                        lambda3=lambda3,
-                        lambda4=lambda4,
-                        mu1=mu1,
-                        mu2=mu2,
-                        mu3=mu3,
-                        mu4=mu4,
-                        q12=q12,
-                        q13=q13,
-                        q14=q14,
-                        q21=q21,
-                        q23=q23,
-                        q24=q24,
-                        q31=q31,
-                        q32=q32,
-                        q34=q34,
-                        q41=q41,
-                        q42=q42,
-                        q43=q43,
-                        log_likelihood = results)
-   output
-}
-```
-
-Run the above function multiple times.
-```{r}
-test1 <- generator(p = 5, musse_fn = musse_fn) 
-# rep(p, repetitions)
-res <- map_dfr(.x = rep(seq(from = 1, to = 10, by = 0.2), 10), .f = ~generator(p = .x, musse_fn = musse_fn))
-
-```
-
-Plot p (escape rate) vs. log.likelihood.
-```{r}
-# plot(res$p, res$log_likelihood)
-
-ggplot(res, aes(x = p, 
-                y = log_likelihood,
-                color = p)) +
-   geom_point(alpha = 0.2)
-```
-
-
+Maddison, W.P., Midford, P.E., and Otto, S.P. (2007) Estimating a binary character’s effect on speciation and extinction. Systematic Biology, 56, 701–710.
 
 
 
