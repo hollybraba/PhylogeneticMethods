@@ -220,7 +220,7 @@ best_fit
 Use MCMC to find the distribution of likelihoods. Use the optimized parameters to hopefully start in a better place.
 Start by making the output file.
 ```{r}
-file.create("/Users/hollybrabazon/Documents/PhD_UTK_EPP/Course_work/EEB587_PhylogeneticMethods/PhylogeneticMethods/Final_Project/MCMC_output_p>1.csv")
+file.create("/Users/hollybrabazon/Documents/PhD_UTK_EPP/Course_work/EEB587_PhylogeneticMethods/PhylogeneticMethods/Final_Project/MCMC_output_pgreaterthan1.csv")
 ```
 
 Then use mcmc().
@@ -232,7 +232,7 @@ mcmc_resuts <- diversitree::mcmc(lik = estimator,
                                  musse_fn = musse_fn, 
                                  return_negloglike = FALSE,
                                  print.every = 100,
-                                 save.file = "/Users/hollybrabazon/Documents/PhD_UTK_EPP/Course_work/EEB587_PhylogeneticMethods/PhylogeneticMethods/Final_Project/MCMC_output_p>1.csv",
+                                 save.file = "/Users/hollybrabazon/Documents/PhD_UTK_EPP/Course_work/EEB587_PhylogeneticMethods/PhylogeneticMethods/Final_Project/MCMC_output_pgreaterthan1.csv",
                                  save.every = 1)
 ```
 
