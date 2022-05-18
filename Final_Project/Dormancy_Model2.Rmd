@@ -118,11 +118,6 @@ names(trait3) <- primates$trait[,1]
 ```
 
 ```{r}
-# make.musse.multitrait(tree = primates$tree,
-#                       states = trait3,
-#                       sampling.f = c(1,1),
-#                       allow.multistep = TRUE,
-#                       control=list())
 musse_fn <- make.musse(tree = primates$tree,
             states = trait3,
             k = 4,
@@ -236,9 +231,9 @@ mcmc_resuts <- diversitree::mcmc(lik = estimator,
                                  w = 1, 
                                  musse_fn = musse_fn, 
                                  return_negloglike = FALSE,
-                                 print.every = 10,
+                                 print.every = 100,
                                  save.file = "/Users/hollybrabazon/Documents/PhD_UTK_EPP/Course_work/EEB587_PhylogeneticMethods/PhylogeneticMethods/Final_Project/MCMC_output_p>1.csv",
-                                 save.every = 10)
+                                 save.every = 1)
 ```
 
 
