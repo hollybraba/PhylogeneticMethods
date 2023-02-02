@@ -29,6 +29,7 @@ discrete.data <- read.csv(text=getURL("https://raw.githubusercontent.com/lukejha
 
 rownames(discrete.data) <- gsub(" ", "_", discrete.data$Species)
 
+# to simplify the data I just went down to the Morph column.
 subset.discrete.data <- discrete.data[, c("Species", "Morph")]
 
 ```
